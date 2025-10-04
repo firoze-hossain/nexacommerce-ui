@@ -135,4 +135,61 @@ export class AuthService {
     }
     return false;
   }
+  // Enhanced fetch with automatic token refresh
+  static async fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+    let token = this.getToken();
+
+    // Refresh token if needed before making the request
+    if (this.shouldRefreshToken()) {
+      try {
+        await this.refreshToken();
+        token = this.getToken(); // Get the new token
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        this.clearTokens();
+        throw new Error('Authentication failed');
+      }
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    if (token) {
+      (headers as any)['Authorization'] = token;
+    }
+
+    let response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    // If token is expired, try to refresh and retry
+    if (response.status === 401) {
+      try {
+        await this.refreshToken();
+        const newToken = this.getToken();
+
+        if (newToken) {
+          (headers as any)['Authorization'] = newToken;
+          response = await fetch(url, {
+            ...options,
+            headers,
+          });
+        }
+      } catch (error) {
+        console.error('Token refresh failed after 401:', error);
+        this.clearTokens();
+        // Redirect to login page
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+        throw error;
+      }
+    }
+
+    return response;
+  }
+
 }
