@@ -1,3 +1,4 @@
+// app/lib/utils/formatters.ts
 export const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -18,3 +19,8 @@ export const formatDate = (dateString: string): string => {
 export const formatRole = (role: string): string => {
     return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 };
+
+export function formatPhoneNumber(phone: string): string {
+    // Basic phone formatting - you can enhance this based on your needs
+    return phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+}
