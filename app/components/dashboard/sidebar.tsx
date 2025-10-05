@@ -10,6 +10,7 @@ const superAdminNavigation = [
     {name: 'Customers', href: '/dashboard/customers', icon: '👥'},
     {name: 'Roles', href: '/dashboard/roles', icon: '👑'},
     {name: 'Permissions', href: '/dashboard/permissions', icon: '🔐'},
+    { name: 'Categories', href: '/dashboard/categories', icon: '📑' },
     {name: 'Products', href: '/dashboard/products', icon: '🛍️'},
     {name: 'Orders', href: '/dashboard/orders', icon: '📦'},
     {name: 'Analytics', href: '/dashboard/analytics', icon: '📈'},
@@ -20,6 +21,7 @@ const adminNavigation = [
     {name: 'Users', href: '/dashboard/users', icon: '👥'},
     {name: 'Vendors', href: '/dashboard/vendors', icon: '🏪'}, // ADDED VENDORS
     {name: 'Customers', href: '/dashboard/customers', icon: '👥'},
+    { name: 'Categories', href: '/dashboard/categories', icon: '📑' },
     {name: 'Products', href: '/dashboard/products', icon: '🛍️'},
     {name: 'Orders', href: '/dashboard/orders', icon: '📦'},
     {name: 'Analytics', href: '/dashboard/analytics', icon: '📈'},
@@ -28,6 +30,7 @@ const adminNavigation = [
 const vendorNavigation = [
     {name: 'Dashboard', href: '/dashboard', icon: '📊'},
     {name: 'My Store', href: '/dashboard/vendor/store', icon: '🏪'}, // Vendor sees "My Store" instead
+    { name: 'Categories', href: '/dashboard/categories', icon: '📑' },
     {name: 'Products', href: '/dashboard/products', icon: '🛍️'},
     {name: 'Orders', href: '/dashboard/orders', icon: '📦'},
     {name: 'Analytics', href: '/dashboard/analytics', icon: '📈'},

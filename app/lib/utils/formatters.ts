@@ -24,3 +24,7 @@ export function formatPhoneNumber(phone: string): string {
     // Basic phone formatting - you can enhance this based on your needs
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
 }
+
+export function formatNumber(number: number): string {
+    return new Intl.NumberFormat('en-US').format(number);
+}
