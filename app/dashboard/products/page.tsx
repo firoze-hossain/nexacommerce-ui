@@ -1,14 +1,14 @@
 // app/dashboard/products/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ProductService } from '@/app/lib/api/product-service';
-import { Product, ProductsResponse } from '@/app/lib/types/product';
+import {useEffect, useState} from 'react';
+import {ProductService} from '@/app/lib/api/product-service';
+import {Product, ProductsResponse} from '@/app/lib/types/product';
 import ProductsTable from '@/app/components/products/product-table';
 import ProductDetailModal from '@/app/components/products/product-detail-modal';
 import ProductCreateModal from '@/app/components/products/product-create-modal';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
+import {Button} from '@/app/components/ui/button';
+import {Input} from '@/app/components/ui/input';
 
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
@@ -22,6 +22,7 @@ export default function ProductsPage() {
     const [error, setError] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false); // NEW: Separate edit modal state
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [modalMode, setModalMode] = useState<'view' | 'edit'>('view');
     const [searchTerm, setSearchTerm] = useState('');
@@ -83,8 +84,7 @@ export default function ProductsPage() {
 
     const handleEditProduct = (product: Product) => {
         setSelectedProduct(product);
-        setModalMode('edit');
-        setIsDetailModalOpen(true);
+        setIsEditModalOpen(true); // Use separate edit modal
     };
 
     const handleDeleteProduct = async (id: number) => {
@@ -120,7 +120,7 @@ export default function ProductsPage() {
         loadProducts(pagination.currentPage);
     };
 
-    const handleModalClose = (refresh: boolean = false) => {
+    const handleDetailModalClose = (refresh: boolean = false) => {
         setIsDetailModalOpen(false);
         setSelectedProduct(null);
         if (refresh) {
@@ -135,12 +135,20 @@ export default function ProductsPage() {
         }
     };
 
+    const handleEditModalClose = (success: boolean = false) => {
+        setIsEditModalOpen(false);
+        setSelectedProduct(null);
+        if (success) {
+            loadProducts(pagination.currentPage);
+        }
+    };
+
     const handlePageChange = (page: number) => {
-        setPagination(prev => ({ ...prev, currentPage: page }));
+        setPagination(prev => ({...prev, currentPage: page}));
     };
 
     const handlePageSizeChange = (size: number) => {
-        setPagination(prev => ({ ...prev, pageSize: size, currentPage: 0 }));
+        setPagination(prev => ({...prev, pageSize: size, currentPage: 0}));
     };
 
     const handleSearch = async () => {
@@ -210,7 +218,9 @@ export default function ProductsPage() {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <div className="flex items-center">
                         <svg className="h-5 w-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            <path fillRule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                  clipRule="evenodd"/>
                         </svg>
                         <span className="text-red-800 text-sm font-medium">{error}</span>
                     </div>
@@ -295,12 +305,22 @@ export default function ProductsPage() {
                 isOpen={isCreateModalOpen}
                 onClose={handleCreateModalClose}
                 onSuccess={handleCreateSuccess}
+                mode="create"
             />
 
-            {/* Product Detail Modal */}
+            {/* Product Edit Modal - Using the enhanced ProductCreateModal */}
+            <ProductCreateModal
+                isOpen={isEditModalOpen}
+                onClose={handleEditModalClose}
+                onSuccess={handleCreateSuccess}
+                product={selectedProduct}
+                mode="edit"
+            />
+
+            {/* Product Detail Modal - For viewing only */}
             <ProductDetailModal
                 isOpen={isDetailModalOpen}
-                onClose={handleModalClose}
+                onClose={handleDetailModalClose}
                 product={selectedProduct}
                 mode={modalMode}
             />

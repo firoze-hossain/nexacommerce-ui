@@ -83,6 +83,7 @@ export interface ProductUpdateRequest {
     compareAtPrice?: number;
     stock?: number;
     lowStockThreshold?: number;
+    sku?: string;
     barcode?: string;
     trackQuantity?: boolean;
     allowBackorder?: boolean;
