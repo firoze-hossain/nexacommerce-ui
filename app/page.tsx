@@ -7,7 +7,7 @@ import HeroSection from '@/app/components/customers/hero-section';
 import CategorySection from '@/app/components/customers/category-section';
 import FeaturedProducts from '@/app/components/customers/featured-products';
 import HotDeals from '@/app/components/customers/hot-deals';
-//import BrandSection from '@/app/components/customers/brand-section';
+import BrandSection from '@/app/components/customers/brand-section';
 import Footer from '@/app/components/customers/footer';
 import CartSidebar from '@/app/components/customers/cart-sidebar';
 import { Product } from '@/app/lib/types/product';
@@ -37,6 +37,9 @@ export default function HomePage() {
                     vendorName: 'TechStore',
                     categoryId: 1,
                     categoryName: 'Electronics',
+                    brandId: 1,
+                    brandName: 'Samsung',
+                    brandSlug: 'samsung',
                     name: 'Wireless Bluetooth Headphones',
                     description: 'High-quality wireless headphones with noise cancellation',
                     shortDescription: 'Wireless headphones with 30hr battery',
@@ -169,7 +172,7 @@ export default function HomePage() {
                     products={products.slice(0, 4)}
                     onAddToCart={addToCart}
                 />
-                {/*<BrandSection />*/}
+                <BrandSection />
             </main>
 
             <Footer />

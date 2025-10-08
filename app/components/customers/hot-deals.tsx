@@ -1,4 +1,4 @@
-// app/components/customer/hot-deals.tsx
+// app/components/customers/hot-deals.tsx
 import { Product } from '@/app/lib/types/product';
 
 interface HotDealsProps {

@@ -1,4 +1,4 @@
-// app/components/customer/category-section.tsx
+// app/components/customers/category-section.tsx
 import Link from 'next/link';
 import { Category } from '@/app/lib/types/category';
 

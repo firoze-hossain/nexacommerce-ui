@@ -1,4 +1,4 @@
-// app/components/customer/featured-products.tsx
+// app/components/customers/featured-products.tsx
 import { Product } from '@/app/lib/types/product';
 
 interface FeaturedProductsProps {

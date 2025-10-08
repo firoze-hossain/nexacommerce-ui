@@ -1,4 +1,4 @@
-// app/components/customer/cart-sidebar.tsx
+// app/components/customers/cart-sidebar.tsx
 import { Product } from '@/app/lib/types/product';
 
 interface CartItem {

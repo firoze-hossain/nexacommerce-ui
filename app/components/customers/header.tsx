@@ -1,4 +1,4 @@
-// app/components/customer/header.tsx
+// app/components/customers/header.tsx
 'use client';
 
 import { useState } from 'react';

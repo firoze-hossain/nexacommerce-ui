@@ -1,4 +1,4 @@
-// app/components/customer/hero-section.tsx
+// app/components/customers/hero-section.tsx
 export default function HeroSection() {
     return (
         <section className="bg-gradient-to-r from-indigo-600 to-purple-700 text-white">
