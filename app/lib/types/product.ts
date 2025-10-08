@@ -5,6 +5,9 @@ export interface Product {
     vendorName: string;
     categoryId: number;
     categoryName: string;
+    brandId: number | null;
+    brandName: string | null;
+    brandSlug: string | null;
     name: string;
     description: string | null;
     shortDescription: string | null;
@@ -51,6 +54,7 @@ export interface ProductAttribute {
 
 export interface ProductCreateRequest {
     categoryId: number;
+    brandId?: number;
     name: string;
     description?: string;
     shortDescription?: string;
@@ -76,6 +80,7 @@ export interface ProductCreateRequest {
 
 export interface ProductUpdateRequest {
     categoryId?: number;
+    brandId?: number;
     name?: string;
     description?: string;
     shortDescription?: string;
@@ -101,16 +106,16 @@ export interface ProductUpdateRequest {
 
 export interface ProductImageRequest {
     imageUrl: string;
-    altText?: string;
-    displayOrder?: number;
+    altText?: string | null;
+    displayOrder?: number | null;
     isPrimary?: boolean;
 }
 
 export interface ProductAttributeRequest {
     name: string;
     value: string;
-    displayType?: string;
-    displayOrder?: number;
+    displayType?: string | null;
+    displayOrder?: number | null;
 }
 
 export interface ProductResponse {

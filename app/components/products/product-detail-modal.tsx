@@ -1,12 +1,12 @@
 // app/components/products/product-detail-modal.tsx
 'use client';
 
-import { Product, ProductUpdateRequest } from '@/app/lib/types/product';
-import { ProductService } from '@/app/lib/api/product-service';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { formatDate, formatCurrency } from '@/app/lib/utils/formatters';
-import { useState, useEffect } from 'react';
+import {Product, ProductUpdateRequest} from '@/app/lib/types/product';
+import {ProductService} from '@/app/lib/api/product-service';
+import {Button} from '@/app/components/ui/button';
+import {Input} from '@/app/components/ui/input';
+import {formatCurrency, formatDate} from '@/app/lib/utils/formatters';
+import {useEffect, useState} from 'react';
 
 interface ProductDetailModalProps {
     isOpen: boolean;
@@ -92,7 +92,7 @@ export default function ProductDetailModal({
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value, type } = e.target;
+        const {name, value, type} = e.target;
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked :
@@ -122,7 +122,8 @@ export default function ProductDetailModal({
                             className="text-gray-400 hover:text-gray-600"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                      d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </button>
                     </div>
@@ -131,7 +132,9 @@ export default function ProductDetailModal({
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                             <div className="flex items-center">
                                 <svg className="h-5 w-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    <path fillRule="evenodd"
+                                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                          clipRule="evenodd"/>
                                 </svg>
                                 <span className="text-red-800 text-sm font-medium">{error}</span>
                             </div>
@@ -169,6 +172,13 @@ export default function ProductDetailModal({
                                                 <dt className="text-sm font-medium text-gray-500">Category</dt>
                                                 <dd className="text-sm text-gray-900">{productDetail.categoryName}</dd>
                                             </div>
+                                            {/* NEW: Brand Information */}
+                                            {productDetail.brandName && (
+                                                <div>
+                                                    <dt className="text-sm font-medium text-gray-500">Brand</dt>
+                                                    <dd className="text-sm text-gray-900">{productDetail.brandName}</dd>
+                                                </div>
+                                            )}
                                         </dl>
                                     </div>
 
@@ -194,13 +204,14 @@ export default function ProductDetailModal({
                                             <div>
                                                 <dt className="text-sm font-medium text-gray-500">Status</dt>
                                                 <dd className="text-sm">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                        productDetail.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                                                            productDetail.status === 'DRAFT' ? 'bg-gray-100 text-gray-800' :
-                                                                productDetail.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
-                                                                    productDetail.status === 'OUT_OF_STOCK' ? 'bg-orange-100 text-orange-800' :
-                                                                        'bg-purple-100 text-purple-800'
-                                                    }`}>
+                                                    <span
+                                                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                                            productDetail.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                                                                productDetail.status === 'DRAFT' ? 'bg-gray-100 text-gray-800' :
+                                                                    productDetail.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
+                                                                        productDetail.status === 'OUT_OF_STOCK' ? 'bg-orange-100 text-orange-800' :
+                                                                            'bg-purple-100 text-purple-800'
+                                                        }`}>
                                                         {productDetail.status}
                                                     </span>
                                                 </dd>
@@ -233,7 +244,8 @@ export default function ProductDetailModal({
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                             {productDetail.attributes.map((attribute) => (
                                                 <div key={attribute.id} className="flex justify-between">
-                                                    <span className="text-sm font-medium text-gray-500">{attribute.name}:</span>
+                                                    <span
+                                                        className="text-sm font-medium text-gray-500">{attribute.name}:</span>
                                                     <span className="text-sm text-gray-900">{attribute.value}</span>
                                                 </div>
                                             ))}
@@ -299,9 +311,26 @@ export default function ProductDetailModal({
                                         />
                                     </div>
                                 </div>
-
+                                {/* NEW: Brand field in edit mode */}
                                 <div>
-                                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label htmlFor="brandId" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Brand
+                                    </label>
+                                    <select
+                                        id="brandId"
+                                        name="brandId"
+                                        value={formData.brandId || ''}
+                                        onChange={handleChange}
+                                        disabled={loading}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="">No brand</option>
+                                        {/* You might want to load brands here as well for edit mode */}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="description"
+                                           className="block text-sm font-medium text-gray-700 mb-1">
                                         Description
                                     </label>
                                     <textarea
@@ -331,7 +360,8 @@ export default function ProductDetailModal({
                                     </div>
 
                                     <div>
-                                        <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label htmlFor="status"
+                                               className="block text-sm font-medium text-gray-700 mb-1">
                                             Status
                                         </label>
                                         <select
@@ -366,9 +396,12 @@ export default function ProductDetailModal({
                                     >
                                         {loading ? (
                                             <div className="flex items-center">
-                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none"
+                                                     viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10"
+                                                            stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor"
+                                                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                 </svg>
                                                 Updating...
                                             </div>
@@ -382,8 +415,10 @@ export default function ProductDetailModal({
                     ) : (
                         <div className="text-center py-8">
                             <div className="text-gray-400 mb-3">
-                                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor"
+                                     viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </div>
                             <p className="text-gray-500">Loading product details...</p>

@@ -10,9 +10,11 @@ import {
 } from '@/app/lib/types/product';
 import {ProductService} from '@/app/lib/api/product-service';
 import {CategoryService} from '@/app/lib/api/category-service';
+import {BrandService} from '@/app/lib/api/brand-service';
 import {Category} from '@/app/lib/types/category';
 import {Button} from '@/app/components/ui/button';
 import {Input} from '@/app/components/ui/input';
+import {Brand} from '@/app/lib/types/brand';
 
 interface ProductCreateModalProps {
     isOpen: boolean;
@@ -31,6 +33,7 @@ export default function ProductCreateModal({
                                            }: ProductCreateModalProps) {
     const [formData, setFormData] = useState<ProductCreateRequest | ProductUpdateRequest>({
         categoryId: 0,
+        brandId: undefined,
         name: '',
         description: '',
         shortDescription: '',
@@ -55,6 +58,7 @@ export default function ProductCreateModal({
     });
 
     const [categories, setCategories] = useState<Category[]>([]);
+    const [brands, setBrands] = useState<Brand[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [imageInput, setImageInput] = useState('');
@@ -63,6 +67,7 @@ export default function ProductCreateModal({
     useEffect(() => {
         if (isOpen) {
             loadCategories();
+            loadBrands();
             if (mode === 'edit' && product) {
                 initializeEditData();
             }
@@ -77,11 +82,19 @@ export default function ProductCreateModal({
             console.error('Error loading categories:', err);
         }
     };
-
+    const loadBrands = async () => {
+        try {
+            const response = await BrandService.getBrands(0, 100);
+            setBrands(response.data?.items || []);
+        } catch (err) {
+            console.error('Error loading brands:', err);
+        }
+    };
     const initializeEditData = () => {
         if (product) {
             setFormData({
                 categoryId: product.categoryId || 0,
+                brandId: product.brandId || undefined,
                 name: product.name || '',
                 description: product.description || '',
                 shortDescription: product.shortDescription || '',
@@ -309,7 +322,28 @@ export default function ProductCreateModal({
                                         ))}
                                     </select>
                                 </div>
-
+                                {/* NEW: Brand Selection */}
+                                <div>
+                                    <label htmlFor="brandId"
+                                           className="block text-sm font-medium text-gray-700 mb-1">
+                                        Brand
+                                    </label>
+                                    <select
+                                        id="brandId"
+                                        name="brandId"
+                                        value={formData.brandId || ''}
+                                        onChange={handleChange}
+                                        disabled={loading}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="">Select a brand (optional)</option>
+                                        {brands.map((brand) => (
+                                            <option key={brand.id} value={brand.id}>
+                                                {brand.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                                 <div>
                                     <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 mb-1">
                                         Barcode
