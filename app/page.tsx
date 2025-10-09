@@ -1,7 +1,7 @@
 // app/page.tsx - REPLACE YOUR CURRENT FILE WITH THIS
 'use client';
 
-import { useState, useEffect } from 'react';
+import {useEffect, useState} from 'react';
 import Header from '@/app/components/customers/header';
 import HeroSection from '@/app/components/customers/hero-section';
 import CategorySection from '@/app/components/customers/category-section';
@@ -10,9 +10,11 @@ import HotDeals from '@/app/components/customers/hot-deals';
 import BrandSection from '@/app/components/customers/brand-section';
 import Footer from '@/app/components/customers/footer';
 import CartSidebar from '@/app/components/customers/cart-sidebar';
-import { Product } from '@/app/lib/types/product';
-import { Category } from '@/app/lib/types/category';
-import { useAuth } from '@/app/hooks/useAuth'; // Named import
+import {Product} from '@/app/lib/types/product';
+import {Category} from '@/app/lib/types/category';
+import {useAuth} from '@/app/hooks/useAuth'; // Named import
+import {ProductService} from '@/app/lib/api/product-service';
+import {CategoryService} from '@/app/lib/api/category-service';
 
 export default function HomePage() {
     const [products, setProducts] = useState<Product[]>([]);
@@ -20,81 +22,39 @@ export default function HomePage() {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [cartItems, setCartItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-
-    const { isAuthenticated, user } = useAuth();
-
+    const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+    const {isAuthenticated, user} = useAuth();
+    const [error, setError] = useState<string | null>(null);
     useEffect(() => {
         loadInitialData();
     }, []);
 
     const loadInitialData = async () => {
         try {
-            // Mock data - replace with actual API calls
-            const mockProducts: Product[] = [
-                {
-                    id: 1,
-                    vendorId: 1,
-                    vendorName: 'TechStore',
-                    categoryId: 1,
-                    categoryName: 'Electronics',
-                    brandId: 1,
-                    brandName: 'Samsung',
-                    brandSlug: 'samsung',
-                    name: 'Wireless Bluetooth Headphones',
-                    description: 'High-quality wireless headphones with noise cancellation',
-                    shortDescription: 'Wireless headphones with 30hr battery',
-                    price: 99.99,
-                    compareAtPrice: 149.99,
-                    stock: 50,
-                    lowStockThreshold: 10,
-                    sku: 'WH-001',
-                    barcode: '123456789',
-                    trackQuantity: true,
-                    allowBackorder: false,
-                    weight: 0.3,
-                    weightUnit: 'kg',
-                    status: 'ACTIVE',
-                    featured: true,
-                    published: true,
-                    metaTitle: 'Wireless Headphones',
-                    metaDescription: 'Best wireless headphones',
-                    tags: 'electronics,audio,wireless',
-                    inStock: true,
-                    lowStock: false,
-                    available: true,
-                    images: [{ id: 1, imageUrl: '/api/placeholder/300/300', altText: 'Headphones', displayOrder: 1, isPrimary: true }],
-                    attributes: [],
-                    createdAt: '2024-01-01',
-                    updatedAt: '2024-01-01'
-                },
-                // Add more mock products as needed
-            ];
+            setLoading(true);
+            setError(null);
 
-            const mockCategories: Category[] = [
-                {
-                    id: 1,
-                    name: 'Electronics',
-                    description: 'Latest gadgets and electronics',
-                    slug: 'electronics',
-                    imageUrl: null,
-                    displayOrder: 1,
-                    featured: true,
-                    active: true,
-                    parentId: null,
-                    parentName: null,
-                    productCount: 50,
-                    childrenCount: 0,
-                    children: [],
-                    createdAt: '2024-01-01',
-                    updatedAt: '2024-01-01'
-                },
-                // Add more mock categories
-            ];
+            // Load featured products
+            const featuredResponse = await ProductService.getFeaturedProducts();
+            if (featuredResponse.success && featuredResponse.data) {
+                setFeaturedProducts(featuredResponse.data);
+            }
 
-            setProducts(mockProducts);
-            setCategories(mockCategories);
+            // Load latest products for hot deals
+            const latestResponse = await ProductService.getAllProducts(0, 8, 'createdAt', 'desc');
+            if (latestResponse.success && latestResponse.data) {
+                setProducts(latestResponse.data.items);
+            }
+
+            // Load categories
+            const categoriesResponse = await CategoryService.getCategories(0, 8);
+            if (categoriesResponse.success && categoriesResponse.data) {
+                setCategories(categoriesResponse.data.items);
+            }
+
         } catch (error) {
             console.error('Error loading data:', error);
+            setError('Failed to load data. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -106,7 +66,7 @@ export default function HomePage() {
             if (existingItem) {
                 return prev.map(item =>
                     item.productId === product.id
-                        ? { ...item, quantity: item.quantity + 1 }
+                        ? {...item, quantity: item.quantity + 1}
                         : item
                 );
             }
@@ -130,7 +90,7 @@ export default function HomePage() {
         }
         setCartItems(prev =>
             prev.map(item =>
-                item.productId === productId ? { ...item, quantity } : item
+                item.productId === productId ? {...item, quantity} : item
             )
         );
     };
@@ -162,8 +122,8 @@ export default function HomePage() {
             />
 
             <main>
-                <HeroSection />
-                <CategorySection categories={categories} />
+                <HeroSection/>
+                <CategorySection categories={categories}/>
                 <FeaturedProducts
                     products={products}
                     onAddToCart={addToCart}
@@ -172,10 +132,10 @@ export default function HomePage() {
                     products={products.slice(0, 4)}
                     onAddToCart={addToCart}
                 />
-                <BrandSection />
+                <BrandSection/>
             </main>
 
-            <Footer />
+            <Footer/>
 
             <CartSidebar
                 isOpen={isCartOpen}

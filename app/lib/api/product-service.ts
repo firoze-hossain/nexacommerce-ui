@@ -9,27 +9,42 @@ export class ProductService {
      * Create a new product
      */
     static async createProduct(productData: ProductCreateRequest, vendorId?: number): Promise<ProductResponse> {
-        const url = vendorId
-            ? `${API_BASE_URL}/products?vendorId=${vendorId}`
-            : `${API_BASE_URL}/products`;
-        const response = await ApiService.post(url, productData);
-        return response;
+        try {
+            const url = vendorId
+                ? `${API_BASE_URL}/products?vendorId=${vendorId}`
+                : `${API_BASE_URL}/products`;
+            const response = await ApiService.post(url, productData);
+            return response;
+        } catch (error) {
+            console.error('Error creating product:', error);
+            throw error;
+        }
     }
 
     /**
      * Get product by ID
      */
     static async getProductById(productId: number): Promise<ProductResponse> {
-        const response = await ApiService.get(`${API_BASE_URL}/products/${productId}`);
-        return response;
+        try {
+            const response = await ApiService.get(`${API_BASE_URL}/products/${productId}`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching product:', error);
+            throw error;
+        }
     }
 
     /**
      * Get product by SKU
      */
     static async getProductBySku(sku: string): Promise<ProductResponse> {
-        const response = await ApiService.get(`${API_BASE_URL}/products/sku/${sku}`);
-        return response;
+        try {
+            const response = await ApiService.get(`${API_BASE_URL}/products/sku/${sku}`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching product by SKU:', error);
+            throw error;
+        }
     }
 
     /**
@@ -41,10 +56,15 @@ export class ProductService {
         sortBy: string = 'createdAt',
         sortDirection: string = 'desc'
     ): Promise<ProductsResponse> {
-        const response = await ApiService.get(
-            `${API_BASE_URL}/products?page=${page}&size=${size}&sortBy=${sortBy}&sortDirection=${sortDirection}`
-        );
-        return response;
+        try {
+            const response = await ApiService.get(
+                `${API_BASE_URL}/products?page=${page}&size=${size}&sortBy=${sortBy}&sortDirection=${sortDirection}`
+            );
+            return response;
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            throw error;
+        }
     }
 
     /**
@@ -55,24 +75,35 @@ export class ProductService {
         page: number = 0,
         size: number = 12
     ): Promise<ProductsResponse> {
-        const response = await ApiService.get(
-            `${API_BASE_URL}/products/vendor/${vendorId}?page=${page}&size=${size}`
-        );
-        return response;
+        try {
+            const response = await ApiService.get(
+                `${API_BASE_URL}/products/vendor/${vendorId}?page=${page}&size=${size}`
+            );
+            return response;
+        } catch (error) {
+            console.error('Error fetching vendor products:', error);
+            throw error;
+        }
     }
 
     /**
      * Get products by brand
      */
+
     static async getProductsByBrand(
         brandId: number,
         page: number = 0,
         size: number = 12
     ): Promise<ProductsResponse> {
-        const response = await ApiService.get(
-            `${API_BASE_URL}/products/brand/${brandId}?page=${page}&size=${size}`
-        );
-        return response;
+        try {
+            const response = await ApiService.get(
+                `${API_BASE_URL}/products/brand/${brandId}?page=${page}&size=${size}`
+            );
+            return response;
+        } catch (error) {
+            console.error('Error fetching brand products:', error);
+            throw error;
+        }
     }
 
     /**
@@ -83,10 +114,15 @@ export class ProductService {
         page: number = 0,
         size: number = 12
     ): Promise<ProductsResponse> {
-        const response = await ApiService.get(
-            `${API_BASE_URL}/products/category/${categoryId}?page=${page}&size=${size}`
-        );
-        return response;
+        try {
+            const response = await ApiService.get(
+                `${API_BASE_URL}/products/category/${categoryId}?page=${page}&size=${size}`
+            );
+            return response;
+        } catch (error) {
+            console.error('Error fetching category products:', error);
+            throw error;
+        }
     }
 
     /**
@@ -136,8 +172,14 @@ export class ProductService {
      * Get featured products
      */
     static async getFeaturedProducts(): Promise<{ success: boolean; message: string; data: ProductResponse[] }> {
-        const response = await ApiService.get(`${API_BASE_URL}/products/featured`);
-        return response;
+        try {
+            const response = await ApiService.get(`${API_BASE_URL}/products/featured`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching featured products:', error);
+            // Return empty array instead of throwing to prevent home page crash
+            return {success: false, message: 'Failed to load featured products', data: []};
+        }
     }
 
     /**
