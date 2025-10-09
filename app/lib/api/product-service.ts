@@ -1,11 +1,6 @@
 // app/lib/api/product-service.ts
-import {
-    ProductCreateRequest,
-    ProductUpdateRequest,
-    ProductResponse,
-    ProductsResponse
-} from '@/app/lib/types/product';
-import { ApiService } from './api-service';
+import {ProductCreateRequest, ProductResponse, ProductsResponse, ProductUpdateRequest} from '@/app/lib/types/product';
+import {ApiService} from './api-service';
 
 const API_BASE_URL = 'http://localhost:8090/api/v1/nexa';
 
@@ -62,6 +57,20 @@ export class ProductService {
     ): Promise<ProductsResponse> {
         const response = await ApiService.get(
             `${API_BASE_URL}/products/vendor/${vendorId}?page=${page}&size=${size}`
+        );
+        return response;
+    }
+
+    /**
+     * Get products by brand
+     */
+    static async getProductsByBrand(
+        brandId: number,
+        page: number = 0,
+        size: number = 12
+    ): Promise<ProductsResponse> {
+        const response = await ApiService.get(
+            `${API_BASE_URL}/products/brand/${brandId}?page=${page}&size=${size}`
         );
         return response;
     }
@@ -160,6 +169,6 @@ export class ProductService {
      */
     static async deleteProduct(productId: number): Promise<{ success: boolean; message: string }> {
         await ApiService.delete(`${API_BASE_URL}/products/${productId}`);
-        return { success: true, message: 'Product deleted successfully' };
+        return {success: true, message: 'Product deleted successfully'};
     }
 }
