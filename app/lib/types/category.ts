@@ -10,7 +10,7 @@ export interface Category {
     active: boolean;
     parentId: number | null;
     parentName: string | null;
-    productCount: number;
+    productCount: number | null;
     childrenCount: number;
     children: Category[];
     createdAt: string;

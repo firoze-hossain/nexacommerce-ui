@@ -47,8 +47,17 @@ export default function HomePage() {
             }
 
             // Load categories
+            // const categoriesResponse = await CategoryService.getCategories(0, 8);
+            // if (categoriesResponse.success && categoriesResponse.data) {
+            //     setCategories(categoriesResponse.data.items);
+            // }
             const categoriesResponse = await CategoryService.getCategories(0, 8);
             if (categoriesResponse.success && categoriesResponse.data) {
+                console.log('Categories with product counts:', categoriesResponse.data.items.map(cat => ({
+                    name: cat.name,
+                    productCount: cat.productCount,
+                    hasProductCount: cat.productCount !== undefined && cat.productCount !== null
+                })));
                 setCategories(categoriesResponse.data.items);
             }
 
