@@ -147,7 +147,7 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
                         <Link href="/categories" className="text-gray-700 hover:text-indigo-600 font-medium">
                             Categories
                         </Link>
-                        <Link href="/deals" className="text-red-600 hover:text-red-700 font-medium">
+                        <Link href="/hot-deals" className="text-red-600 hover:text-red-700 font-medium">
                             🔥 Hot Deals
                         </Link>
                         <Link href="/brands" className="text-gray-700 hover:text-indigo-600 font-medium">
