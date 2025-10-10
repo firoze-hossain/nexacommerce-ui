@@ -13,6 +13,7 @@ const superAdminNavigation = [
     {name: 'Categories', href: '/dashboard/categories', icon: '📑'},
     {name: 'Brands', href: '/dashboard/brands', icon: '🏷️'},
     {name: 'Products', href: '/dashboard/products', icon: '🛍️'},
+    {name: 'Hot Deals', href: '/dashboard/hot-deals', icon: '🔥'},
     {name: 'Orders', href: '/dashboard/orders', icon: '📦'},
     {name: 'Analytics', href: '/dashboard/analytics', icon: '📈'},
 ];
@@ -25,6 +26,7 @@ const adminNavigation = [
     {name: 'Categories', href: '/dashboard/categories', icon: '📑'},
     {name: 'Brands', href: '/dashboard/brands', icon: '🏷️'},
     {name: 'Products', href: '/dashboard/products', icon: '🛍️'},
+    {name: 'Hot Deals', href: '/dashboard/hot-deals', icon: '🔥'},
     {name: 'Orders', href: '/dashboard/orders', icon: '📦'},
     {name: 'Analytics', href: '/dashboard/analytics', icon: '📈'},
 ];
@@ -35,6 +37,7 @@ const vendorNavigation = [
     {name: 'Categories', href: '/dashboard/categories', icon: '📑'},
     {name: 'Brands', href: '/dashboard/brands', icon: '🏷️'},
     {name: 'Products', href: '/dashboard/products', icon: '🛍️'},
+    {name: 'Hot Deals', href: '/dashboard/hot-deals', icon: '🔥'},
     {name: 'Orders', href: '/dashboard/orders', icon: '📦'},
     {name: 'Analytics', href: '/dashboard/analytics', icon: '📈'},
 ];
