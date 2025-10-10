@@ -152,20 +152,43 @@ export default function CategoryPage() {
 
                     {/* Category Header */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-8">
-                        <div className="text-center">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-4">{category.name}</h1>
-                            {category.description && (
-                                <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-6">
-                                    {category.description}
-                                </p>
+                        <div className="flex flex-col md:flex-row items-center gap-6">
+                            {/* Category Image - Use real image if available */}
+                            {category.imageUrl && (
+                                <div className="w-24 h-24 bg-gray-100 rounded-2xl flex items-center justify-center overflow-hidden">
+                                    <img
+                                        src={category.imageUrl}
+                                        alt={category.name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.style.display = 'none';
+                                        }}
+                                    />
+                                </div>
                             )}
-                            <div className="flex justify-center items-center space-x-6 text-sm text-gray-500">
-                                <span>{products.length} products available</span>
-                                {category.featured && (
-                                    <span className="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full text-xs font-medium">
-                                        Featured
-                                    </span>
+
+                            {/* Category Info */}
+                            <div className="flex-1 text-center md:text-left">
+                                <h1 className="text-3xl font-bold text-gray-900 mb-2">{category.name}</h1>
+                                {category.description && (
+                                    <p className="text-gray-600 text-lg mb-4">
+                                        {category.description}
+                                    </p>
                                 )}
+                                <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 text-sm text-gray-500">
+                                    <span>
+                                        {category.productCount !== null && category.productCount !== undefined
+                                            ? `${category.productCount} products available`
+                                            : 'Products loading...'
+                                        }
+                                    </span>
+                                    {category.featured && (
+                                        <span className="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full text-xs font-medium">
+                                            Featured
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

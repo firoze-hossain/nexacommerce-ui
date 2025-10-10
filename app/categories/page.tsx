@@ -8,6 +8,7 @@ import Header from '@/app/components/customers/header';
 import Footer from '@/app/components/customers/footer';
 import CartSidebar from '@/app/components/customers/cart-sidebar';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
@@ -73,7 +74,8 @@ export default function CategoriesPage() {
         return cartItems.reduce((count, item) => count + item.quantity, 0);
     };
 
-    const getCategoryIcon = (categoryName: string) => {
+    // Fallback icons in case image is not available
+    const getCategoryFallbackIcon = (categoryName: string) => {
         const iconMap: { [key: string]: string } = {
             'Electronics': '📱',
             'Fashion': '👕',
@@ -164,8 +166,23 @@ export default function CategoriesPage() {
                                         href={`/categories/${category.slug || category.id}`}
                                         className="group bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center hover:shadow-xl hover:border-indigo-300 transition-all duration-300 hover:scale-105"
                                     >
-                                        <div className={`w-20 h-20 ${getCategoryColor(index)} rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 border-2`}>
-                                            <span className="text-3xl">{getCategoryIcon(category.name)}</span>
+                                        {/* Category Image - Use real image if available */}
+                                        <div className={`w-20 h-20 ${!category.imageUrl ? getCategoryColor(index) : 'bg-gray-50'} rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 border-2 overflow-hidden`}>
+                                            {category.imageUrl ? (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <img
+                                                        src={category.imageUrl}
+                                                        alt={category.name}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            const target = e.target as HTMLImageElement;
+                                                            target.style.display = 'none';
+                                                        }}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <span className="text-3xl">{getCategoryFallbackIcon(category.name)}</span>
+                                            )}
                                         </div>
                                         <h3 className="font-semibold text-gray-900 text-lg mb-2 group-hover:text-indigo-600 transition-colors">
                                             {category.name}
@@ -174,7 +191,10 @@ export default function CategoriesPage() {
                                             {category.description || 'Discover amazing products'}
                                         </p>
                                         <div className="text-sm text-indigo-600 font-medium">
-                                            {category.productCount || 0}+ products
+                                            {category.productCount !== null && category.productCount !== undefined
+                                                ? `${category.productCount}+ products`
+                                                : 'Products coming soon'
+                                            }
                                         </div>
                                     </Link>
                                 ))}
@@ -205,14 +225,32 @@ export default function CategoriesPage() {
                                         href={`/categories/${category.slug || category.id}`}
                                         className="group bg-white rounded-2xl shadow-sm border border-gray-200 p-4 text-center hover:shadow-lg hover:border-indigo-300 transition-all duration-300"
                                     >
-                                        <div className={`w-16 h-16 ${getCategoryColor(index)} rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300`}>
-                                            <span className="text-2xl">{getCategoryIcon(category.name)}</span>
+                                        {/* Category Image - Use real image if available */}
+                                        <div className={`w-16 h-16 ${!category.imageUrl ? getCategoryColor(index) : 'bg-gray-50'} rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300 overflow-hidden`}>
+                                            {category.imageUrl ? (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <img
+                                                        src={category.imageUrl}
+                                                        alt={category.name}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            const target = e.target as HTMLImageElement;
+                                                            target.style.display = 'none';
+                                                        }}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <span className="text-2xl">{getCategoryFallbackIcon(category.name)}</span>
+                                            )}
                                         </div>
                                         <h3 className="font-semibold text-gray-900 text-sm mb-1 group-hover:text-indigo-600 transition-colors line-clamp-2">
                                             {category.name}
                                         </h3>
                                         <p className="text-xs text-gray-500">
-                                            {category.productCount || 0} products
+                                            {category.productCount !== null && category.productCount !== undefined
+                                                ? `${category.productCount} products`
+                                                : 'Products coming soon'
+                                            }
                                         </p>
                                     </Link>
                                 ))}
