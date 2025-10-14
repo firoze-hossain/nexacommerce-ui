@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/hooks/useAuth';
 import { Input } from '@/app/components/ui/input';
 import { Button } from '@/app/components/ui/button';
+import Link from 'next/link';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -144,12 +145,12 @@ export default function LoginPage() {
                         <div className="text-center">
                             <p className="text-sm text-gray-600">
                                 Don't have an account?{' '}
-                                <button
-                                    type="button"
+                                <Link
+                                    href="/signup"
                                     className="font-medium text-indigo-600 hover:text-indigo-500"
                                 >
-                                    Contact administrator
-                                </button>
+                                    Create one here
+                                </Link>
                             </p>
                         </div>
                     </form>

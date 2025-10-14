@@ -74,8 +74,8 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
                             </svg>
                             {cartItemCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartItemCount}
-                </span>
+                                    {cartItemCount}
+                                </span>
                             )}
                         </button>
 
@@ -175,12 +175,21 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
                         <Link href="/categories" className="block text-gray-700 hover:text-indigo-600">
                             Categories
                         </Link>
-                        <Link href="/deals" className="block text-red-600 hover:text-red-700">
+                        <Link href="/hot-deals" className="block text-red-600 hover:text-red-700">
                             🔥 Hot Deals
                         </Link>
                         <Link href="/brands" className="block text-gray-700 hover:text-indigo-600">
                             Brands
                         </Link>
+                        {/* Add Sign Up link to mobile menu */}
+                        {!isAuthenticated && (
+                            <Link
+                                href="/signup"
+                                className="block text-indigo-600 hover:text-indigo-700 font-medium"
+                            >
+                                Sign Up
+                            </Link>
+                        )}
                     </div>
                 </div>
             )}
