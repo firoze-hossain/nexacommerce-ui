@@ -1,9 +1,11 @@
-// app/brands/page.tsx
+// app/brands/page.tsx - UPDATED VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Brand } from '@/app/lib/types/brand';
 import { BrandService } from '@/app/lib/api/brand-service';
+import { CartService } from '@/app/lib/api/cart-service';
+import { useAuth } from '@/app/hooks/useAuth';
 import Header from '@/app/components/customers/header';
 import Footer from '@/app/components/customers/footer';
 import CartSidebar from '@/app/components/customers/cart-sidebar';
@@ -13,14 +15,17 @@ export default function BrandsPage() {
     const [brands, setBrands] = useState<Brand[]>([]);
     const [featuredBrands, setFeaturedBrands] = useState<Brand[]>([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
-    const [cartItems, setCartItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [cartItemCount, setCartItemCount] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('name');
+    const { isAuthenticated, user } = useAuth();
 
     useEffect(() => {
         loadBrands();
         loadFeaturedBrands();
+        loadCartItemCount();
     }, [sortBy]);
 
     const loadBrands = async () => {
@@ -31,6 +36,7 @@ export default function BrandsPage() {
             }
         } catch (error) {
             console.error('Error loading brands:', error);
+            setError('Failed to load brands');
         }
     };
 
@@ -47,32 +53,48 @@ export default function BrandsPage() {
         }
     };
 
-    const addToCart = () => {
-        // This would be implemented when viewing brand products
-    };
-
-    const removeFromCart = (productId: number) => {
-        setCartItems(prev => prev.filter(item => item.productId !== productId));
-    };
-
-    const updateCartQuantity = (productId: number, quantity: number) => {
-        if (quantity === 0) {
-            removeFromCart(productId);
-            return;
+    const getSessionId = (): string => {
+        if (typeof window !== 'undefined') {
+            let sessionId = localStorage.getItem('guestSessionId');
+            if (!sessionId) {
+                sessionId = 'guest-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('guestSessionId', sessionId);
+            }
+            return sessionId;
         }
-        setCartItems(prev =>
-            prev.map(item =>
-                item.productId === productId ? { ...item, quantity } : item
-            )
-        );
+        return '';
     };
 
-    const getCartTotal = () => {
-        return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const loadCartItemCount = async () => {
+        try {
+            let response;
+
+            if (isAuthenticated) {
+                response = await CartService.getMyCart();
+            } else {
+                const sessionId = getSessionId();
+                if (!sessionId) {
+                    setCartItemCount(0);
+                    return;
+                }
+                response = await CartService.getGuestCart(sessionId);
+            }
+
+            if (response.success && response.data) {
+                const totalItems = response.data.items.reduce((total: number, item: any) => total + item.quantity, 0);
+                setCartItemCount(totalItems);
+            } else {
+                setCartItemCount(0);
+            }
+        } catch (error) {
+            console.error('Error loading cart item count:', error);
+            setCartItemCount(0);
+        }
     };
 
-    const getCartItemCount = () => {
-        return cartItems.reduce((count, item) => count + item.quantity, 0);
+    const handleCartUpdate = () => {
+        // Refresh cart item count when cart is updated from sidebar
+        loadCartItemCount();
     };
 
     const filteredBrands = brands.filter(brand =>
@@ -104,7 +126,7 @@ export default function BrandsPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50">
-                <Header cartItemCount={0} onCartClick={() => setIsCartOpen(true)} />
+                <Header cartItemCount={cartItemCount} onCartClick={() => setIsCartOpen(true)} />
                 <div className="container mx-auto px-4 py-8">
                     <div className="animate-pulse">
                         <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
@@ -126,8 +148,37 @@ export default function BrandsPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
+            {/* Error Banner */}
+            {error && (
+                <div className="bg-red-50 border-l-4 border-red-400 p-4">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-red-700">{error}</p>
+                        </div>
+                        <div className="ml-auto pl-3">
+                            <div className="-mx-1.5 -my-1.5">
+                                <button
+                                    onClick={() => setError(null)}
+                                    className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
+                                >
+                                    <span className="sr-only">Dismiss</span>
+                                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <Header
-                cartItemCount={getCartItemCount()}
+                cartItemCount={cartItemCount}
                 onCartClick={() => setIsCartOpen(true)}
             />
 
@@ -325,10 +376,7 @@ export default function BrandsPage() {
             <CartSidebar
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
-                cartItems={cartItems}
-                onUpdateQuantity={updateCartQuantity}
-                onRemoveItem={removeFromCart}
-                total={getCartTotal()}
+                onCartUpdate={handleCartUpdate}
             />
         </div>
     );

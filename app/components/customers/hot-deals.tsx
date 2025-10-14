@@ -1,4 +1,4 @@
-// app/components/customers/hot-deals.tsx
+// app/components/customers/hot-deals.tsx - UPDATED VERSION
 import { Product } from '@/app/lib/types/product';
 import { HotDeal } from '@/app/lib/types/hot-deal';
 import { useEffect, useState } from 'react';
@@ -6,9 +6,10 @@ import { HotDealService } from '@/app/lib/api/hot-deal-service';
 
 interface HotDealsProps {
     onAddToCart: (product: Product, hotDeal?: HotDeal) => void;
+    addingToCart?: { productId: number, hotDealId?: number } | null;
 }
 
-export default function HotDeals({ onAddToCart }: HotDealsProps) {
+export default function HotDeals({ onAddToCart, addingToCart }: HotDealsProps) {
     const [hotDeals, setHotDeals] = useState<HotDeal[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -40,21 +41,22 @@ export default function HotDeals({ onAddToCart }: HotDealsProps) {
         const difference = new Date(endDate).getTime() - new Date().getTime();
 
         if (difference <= 0) {
-            return { hours: 0, minutes: 0, seconds: 0 };
+            return { hours: 0, minutes: 0, seconds: 0, expired: true };
         }
 
         return {
             hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
             minutes: Math.floor((difference / 1000 / 60) % 60),
-            seconds: Math.floor((difference / 1000) % 60)
+            seconds: Math.floor((difference / 1000) % 60),
+            expired: false
         };
     };
 
-    const [timeLeft, setTimeLeft] = useState<{[key: number]: {hours: number, minutes: number, seconds: number}}>({});
+    const [timeLeft, setTimeLeft] = useState<{[key: number]: any}>({});
 
     useEffect(() => {
         const timer = setInterval(() => {
-            const newTimeLeft: {[key: number]: {hours: number, minutes: number, seconds: number}} = {};
+            const newTimeLeft: {[key: number]: any} = {};
             hotDeals.forEach(deal => {
                 newTimeLeft[deal.id] = calculateTimeLeft(deal.endDate);
             });
@@ -129,88 +131,110 @@ export default function HotDeals({ onAddToCart }: HotDealsProps) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {hotDeals.slice(0, 4).map((deal) => (
-                        <div key={deal.id} className="bg-white rounded-2xl shadow-lg border-2 border-red-200 overflow-hidden hover:shadow-xl transition-all duration-300">
-                            {/* Sale Badge */}
-                            <div className="bg-red-600 text-white text-center py-2 font-bold">
-                                {deal.discountType === 'PERCENTAGE'
-                                    ? `SAVE ${deal.discountValue}%`
-                                    : `SAVE $${deal.discountValue}`
-                                }
-                            </div>
+                    {hotDeals.slice(0, 4).map((deal) => {
+                        const timeLeftData = timeLeft[deal.id] || calculateTimeLeft(deal.endDate);
+                        const isExpired = timeLeftData.expired;
+                        const isAdding = addingToCart?.productId === deal.product?.id && addingToCart?.hotDealId === deal.id;
 
-                            <div className="p-4">
-                                <div className="text-center mb-4">
-                                    <img
-                                        src={deal.product?.images?.[0]?.imageUrl || '/api/placeholder/200/200'}
-                                        alt={deal.product?.name}
-                                        className="w-32 h-32 object-cover mx-auto rounded-lg"
-                                    />
+                        return (
+                            <div key={deal.id} className="bg-white rounded-2xl shadow-lg border-2 border-red-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+                                {/* Sale Badge */}
+                                <div className="bg-red-600 text-white text-center py-2 font-bold">
+                                    {deal.discountType === 'PERCENTAGE'
+                                        ? `SAVE ${deal.discountValue}%`
+                                        : `SAVE $${deal.discountValue}`
+                                    }
                                 </div>
 
-                                <h3 className="font-semibold text-gray-900 text-center mb-2 line-clamp-2">
-                                    {deal.product?.name}
-                                </h3>
-
-                                <div className="text-center mb-4">
-                                    <div className="flex items-center justify-center space-x-2">
-                                        <span className="text-2xl font-bold text-red-600">
-                                            ${deal.dealPrice.toFixed(2)}
-                                        </span>
-                                        <span className="text-lg text-gray-500 line-through">
-                                            ${deal.originalPrice.toFixed(2)}
-                                        </span>
+                                <div className="p-4">
+                                    <div className="text-center mb-4">
+                                        <img
+                                            src={deal.product?.images?.[0]?.imageUrl || '/api/placeholder/200/200'}
+                                            alt={deal.product?.name}
+                                            className="w-32 h-32 object-cover mx-auto rounded-lg"
+                                        />
                                     </div>
-                                </div>
 
-                                {/* Progress Bar */}
-                                {deal.stockLimit && (
-                                    <div className="mb-4">
-                                        <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                            <span>Sold: {deal.soldCount}</span>
-                                            <span>Available: {deal.remainingStock}</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <div
-                                                className="bg-red-600 h-2 rounded-full"
-                                                style={{
-                                                    width: `${Math.min((deal.soldCount / deal.stockLimit) * 100, 100)}%`
-                                                }}
-                                            ></div>
+                                    <h3 className="font-semibold text-gray-900 text-center mb-2 line-clamp-2">
+                                        {deal.product?.name}
+                                    </h3>
+
+                                    <div className="text-center mb-4">
+                                        <div className="flex items-center justify-center space-x-2">
+                                            <span className="text-2xl font-bold text-red-600">
+                                                ${deal.dealPrice.toFixed(2)}
+                                            </span>
+                                            <span className="text-lg text-gray-500 line-through">
+                                                ${deal.originalPrice.toFixed(2)}
+                                            </span>
                                         </div>
                                     </div>
-                                )}
 
-                                {/* Timer */}
-                                <div className="text-center mb-4">
-                                    <div className="text-sm text-gray-600 mb-2">Offer ends in:</div>
-                                    <div className="flex justify-center space-x-1 text-sm">
-                                        <span className="bg-gray-900 text-white px-2 py-1 rounded">
-                                            {formatTime(timeLeft[deal.id]?.hours || 0)}
-                                        </span>:
-                                        <span className="bg-gray-900 text-white px-2 py-1 rounded">
-                                            {formatTime(timeLeft[deal.id]?.minutes || 0)}
-                                        </span>:
-                                        <span className="bg-gray-900 text-white px-2 py-1 rounded">
-                                            {formatTime(timeLeft[deal.id]?.seconds || 0)}
-                                        </span>
+                                    {/* Progress Bar */}
+                                    {deal.stockLimit && (
+                                        <div className="mb-4">
+                                            <div className="flex justify-between text-sm text-gray-600 mb-1">
+                                                <span>Sold: {deal.soldCount}</span>
+                                                <span>Available: {deal.remainingStock}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div
+                                                    className="bg-red-600 h-2 rounded-full"
+                                                    style={{
+                                                        width: `${Math.min((deal.soldCount / deal.stockLimit) * 100, 100)}%`
+                                                    }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Timer */}
+                                    <div className="text-center mb-4">
+                                        <div className="text-sm text-gray-600 mb-2">
+                                            {isExpired ? 'Deal expired' : 'Offer ends in:'}
+                                        </div>
+                                        {!isExpired && (
+                                            <div className="flex justify-center space-x-1 text-sm">
+                                                <span className="bg-gray-900 text-white px-2 py-1 rounded">
+                                                    {formatTime(timeLeftData.hours || 0)}
+                                                </span>:
+                                                <span className="bg-gray-900 text-white px-2 py-1 rounded">
+                                                    {formatTime(timeLeftData.minutes || 0)}
+                                                </span>:
+                                                <span className="bg-gray-900 text-white px-2 py-1 rounded">
+                                                    {formatTime(timeLeftData.seconds || 0)}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
 
-                                <button
-                                    onClick={() => onAddToCart(deal.product!, deal)}
-                                    disabled={deal.stockLimit && deal.remainingStock === 0}
-                                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                                        deal.stockLimit && deal.remainingStock === 0
-                                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                                            : 'bg-red-600 text-white hover:bg-red-700'
-                                    }`}
-                                >
-                                    {deal.stockLimit && deal.remainingStock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                                </button>
+                                    <button
+                                        onClick={() => onAddToCart(deal.product!, deal)}
+                                        disabled={isExpired || (deal.stockLimit && deal.remainingStock === 0) || isAdding}
+                                        className={`w-full py-3 rounded-lg font-semibold transition-colors ${
+                                            isExpired || (deal.stockLimit && deal.remainingStock === 0)
+                                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                                : isAdding
+                                                    ? 'bg-red-400 text-white cursor-wait'
+                                                    : 'bg-red-600 text-white hover:bg-red-700'
+                                        }`}
+                                    >
+                                        {isAdding ? (
+                                            <div className="flex items-center justify-center">
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                Adding...
+                                            </div>
+                                        ) : isExpired
+                                            ? 'Deal Expired'
+                                            : deal.stockLimit && deal.remainingStock === 0
+                                                ? 'Out of Stock'
+                                                : 'Add to Cart'
+                                        }
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <div className="text-center mt-8">

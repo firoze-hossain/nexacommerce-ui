@@ -1,14 +1,18 @@
-// app/products/[id]/page.tsx
+// app/products/[id]/page.tsx - UPDATED VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Product } from '@/app/lib/types/product';
 import { ProductService } from '@/app/lib/api/product-service';
+import { CartService } from '@/app/lib/api/cart-service';
+import { CartItemRequest } from '@/app/lib/types/cart';
+import { useAuth } from '@/app/hooks/useAuth';
 import Header from '@/app/components/customers/header';
 import Footer from '@/app/components/customers/footer';
 import CartSidebar from '@/app/components/customers/cart-sidebar';
 import { formatCurrency } from '@/app/lib/utils/formatters';
+import Link from 'next/link';
 
 export default function ProductDetailPage() {
     const params = useParams();
@@ -17,14 +21,18 @@ export default function ProductDetailPage() {
     const [product, setProduct] = useState<Product | null>(null);
     const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
-    const [cartItems, setCartItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
+    const [error, setError] = useState<string | null>(null);
+    const [cartItemCount, setCartItemCount] = useState(0);
+    const [addingToCart, setAddingToCart] = useState<boolean>(false);
+    const { isAuthenticated, user } = useAuth();
 
     useEffect(() => {
         if (productId) {
             loadProduct();
+            loadCartItemCount();
         }
     }, [productId]);
 
@@ -35,9 +43,12 @@ export default function ProductDetailPage() {
             if (response.success && response.data) {
                 setProduct(response.data);
                 loadRelatedProducts(response.data.categoryId);
+            } else {
+                setError('Product not found');
             }
         } catch (error) {
             console.error('Error loading product:', error);
+            setError('Failed to load product');
         } finally {
             setLoading(false);
         }
@@ -54,50 +65,130 @@ export default function ProductDetailPage() {
         }
     };
 
-    const addToCart = () => {
+    const getSessionId = (): string => {
+        if (typeof window !== 'undefined') {
+            let sessionId = localStorage.getItem('guestSessionId');
+            if (!sessionId) {
+                sessionId = 'guest-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('guestSessionId', sessionId);
+            }
+            return sessionId;
+        }
+        return '';
+    };
+
+    const loadCartItemCount = async () => {
+        try {
+            let response;
+
+            if (isAuthenticated) {
+                response = await CartService.getMyCart();
+            } else {
+                const sessionId = getSessionId();
+                if (!sessionId) {
+                    setCartItemCount(0);
+                    return;
+                }
+                response = await CartService.getGuestCart(sessionId);
+            }
+
+            if (response.success && response.data) {
+                const totalItems = response.data.items.reduce((total: number, item: any) => total + item.quantity, 0);
+                setCartItemCount(totalItems);
+            } else {
+                setCartItemCount(0);
+            }
+        } catch (error) {
+            console.error('Error loading cart item count:', error);
+            setCartItemCount(0);
+        }
+    };
+
+    const addToCart = async () => {
         if (!product) return;
 
-        setCartItems(prev => {
-            const existingItem = prev.find(item => item.productId === product.id);
-            if (existingItem) {
-                return prev.map(item =>
-                    item.productId === product.id
-                        ? { ...item, quantity: item.quantity + quantity }
-                        : item
-                );
-            }
-            return [...prev, {
+        try {
+            setAddingToCart(true);
+            setError(null);
+
+            const request: CartItemRequest = {
                 productId: product.id,
-                product,
-                quantity: quantity,
-                price: product.price
-            }];
-        });
-        setQuantity(1);
-    };
+                quantity: quantity
+            };
 
-    const removeFromCart = (productId: number) => {
-        setCartItems(prev => prev.filter(item => item.productId !== productId));
-    };
+            let response;
 
-    const updateCartQuantity = (productId: number, newQuantity: number) => {
-        if (newQuantity === 0) {
-            removeFromCart(productId);
-            return;
+            if (isAuthenticated) {
+                response = await CartService.addItemToCart(request);
+            } else {
+                const sessionId = getSessionId();
+                response = await CartService.addItemToGuestCart(sessionId, request);
+            }
+
+            if (response.success) {
+                // Update cart item count
+                const totalItems = response.data.items.reduce((total: number, item: any) => total + item.quantity, 0);
+                setCartItemCount(totalItems);
+
+                // Show success feedback
+                console.log('Product added to cart successfully');
+
+                // Open cart sidebar automatically
+                setIsCartOpen(true);
+
+                // Reset quantity
+                setQuantity(1);
+            } else {
+                setError(response.message || 'Failed to add product to cart');
+            }
+        } catch (error) {
+            console.error('Error adding product to cart:', error);
+            setError('Failed to add product to cart. Please try again.');
+        } finally {
+            setAddingToCart(false);
         }
-        setCartItems(prev =>
-            prev.map(item =>
-                item.productId === productId ? { ...item, quantity: newQuantity } : item
-            )
-        );
     };
 
-    const getCartTotal = () => {
-        return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const handleCartUpdate = () => {
+        // Refresh cart item count when cart is updated from sidebar
+        loadCartItemCount();
     };
 
-    const getCartItemCount = () => {
-        return cartItems.reduce((count, item) => count + item.quantity, 0);
+    const addRelatedToCart = async (relatedProduct: Product) => {
+        try {
+            setError(null);
+
+            const request: CartItemRequest = {
+                productId: relatedProduct.id,
+                quantity: 1
+            };
+
+            let response;
+
+            if (isAuthenticated) {
+                response = await CartService.addItemToCart(request);
+            } else {
+                const sessionId = getSessionId();
+                response = await CartService.addItemToGuestCart(sessionId, request);
+            }
+
+            if (response.success) {
+                // Update cart item count
+                const totalItems = response.data.items.reduce((total: number, item: any) => total + item.quantity, 0);
+                setCartItemCount(totalItems);
+
+                // Show success feedback
+                console.log('Related product added to cart successfully');
+
+                // Open cart sidebar automatically
+                setIsCartOpen(true);
+            } else {
+                setError(response.message || 'Failed to add product to cart');
+            }
+        } catch (error) {
+            console.error('Error adding related product to cart:', error);
+            setError('Failed to add product to cart. Please try again.');
+        }
     };
 
     if (loading) {
@@ -118,6 +209,9 @@ export default function ProductDetailPage() {
                     <div className="text-6xl mb-4">😕</div>
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">Product Not Found</h1>
                     <p className="text-gray-600">The product you're looking for doesn't exist.</p>
+                    <Link href="/products" className="mt-4 inline-block bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
+                        Browse Products
+                    </Link>
                 </div>
             </div>
         );
@@ -125,8 +219,37 @@ export default function ProductDetailPage() {
 
     return (
         <div className="min-h-screen bg-white">
+            {/* Error Banner */}
+            {error && (
+                <div className="bg-red-50 border-l-4 border-red-400 p-4">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-red-700">{error}</p>
+                        </div>
+                        <div className="ml-auto pl-3">
+                            <div className="-mx-1.5 -my-1.5">
+                                <button
+                                    onClick={() => setError(null)}
+                                    className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
+                                >
+                                    <span className="sr-only">Dismiss</span>
+                                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <Header
-                cartItemCount={getCartItemCount()}
+                cartItemCount={cartItemCount}
                 onCartClick={() => setIsCartOpen(true)}
             />
 
@@ -134,11 +257,11 @@ export default function ProductDetailPage() {
                 <div className="container mx-auto px-4">
                     {/* Breadcrumb */}
                     <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-8">
-                        <a href="/" className="hover:text-indigo-600">Home</a>
+                        <Link href="/" className="hover:text-indigo-600">Home</Link>
                         <span>›</span>
-                        <a href="/products" className="hover:text-indigo-600">Products</a>
+                        <Link href="/products" className="hover:text-indigo-600">Products</Link>
                         <span>›</span>
-                        <a href={`/categories/${product.categoryId}`} className="hover:text-indigo-600">{product.categoryName}</a>
+                        <span className="text-gray-900">{product.categoryName}</span>
                         <span>›</span>
                         <span className="text-gray-900">{product.name}</span>
                     </nav>
@@ -230,6 +353,7 @@ export default function ProductDetailPage() {
                                     <button
                                         onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
                                         className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                        disabled={addingToCart}
                                     >
                                         -
                                     </button>
@@ -237,20 +361,28 @@ export default function ProductDetailPage() {
                                     <button
                                         onClick={() => setQuantity(prev => prev + 1)}
                                         className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                        disabled={addingToCart}
                                     >
                                         +
                                     </button>
                                 </div>
                                 <button
                                     onClick={addToCart}
-                                    disabled={!product.inStock}
+                                    disabled={!product.inStock || addingToCart}
                                     className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-colors ${
-                                        product.inStock
-                                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        !product.inStock
+                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                            : addingToCart
+                                                ? 'bg-indigo-400 text-white cursor-wait'
+                                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
                                     }`}
                                 >
-                                    {product.inStock ? 'Add to Cart' : 'Out of Stock'}
+                                    {addingToCart ? (
+                                        <div className="flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                            Adding...
+                                        </div>
+                                    ) : product.inStock ? 'Add to Cart' : 'Out of Stock'}
                                 </button>
                             </div>
 
@@ -320,28 +452,15 @@ export default function ProductDetailPage() {
                                                 )}
                                             </div>
                                             <button
-                                                onClick={() => {
-                                                    const productToAdd = relatedProduct;
-                                                    setCartItems(prev => {
-                                                        const existing = prev.find(item => item.productId === productToAdd.id);
-                                                        if (existing) {
-                                                            return prev.map(item =>
-                                                                item.productId === productToAdd.id
-                                                                    ? { ...item, quantity: item.quantity + 1 }
-                                                                    : item
-                                                            );
-                                                        }
-                                                        return [...prev, {
-                                                            productId: productToAdd.id,
-                                                            product: productToAdd,
-                                                            quantity: 1,
-                                                            price: productToAdd.price
-                                                        }];
-                                                    });
-                                                }}
-                                                className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                                                onClick={() => addRelatedToCart(relatedProduct)}
+                                                disabled={!relatedProduct.inStock}
+                                                className={`w-full py-2 rounded-lg font-semibold transition-colors ${
+                                                    relatedProduct.inStock
+                                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                }`}
                                             >
-                                                Add to Cart
+                                                {relatedProduct.inStock ? 'Add to Cart' : 'Out of Stock'}
                                             </button>
                                         </div>
                                     </div>
@@ -357,10 +476,7 @@ export default function ProductDetailPage() {
             <CartSidebar
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
-                cartItems={cartItems}
-                onUpdateQuantity={updateCartQuantity}
-                onRemoveItem={removeFromCart}
-                total={getCartTotal()}
+                onCartUpdate={handleCartUpdate}
             />
         </div>
     );
