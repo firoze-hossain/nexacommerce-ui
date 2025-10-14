@@ -1,10 +1,19 @@
 // app/lib/utils/formatters.ts
-export const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-US', {
+// export const formatCurrency = (amount: number): string => {
+//     return new Intl.NumberFormat('en-US', {
+//         style: 'currency',
+//         currency: 'USD',
+//     }).format(amount);
+// };
+
+export function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-BD', {
         style: 'currency',
-        currency: 'USD',
-    }).format(amount);
-};
+        currency: 'BDT',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(amount).replace('BDT', '৳');
+}
 
 export const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('en-US', {
