@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 'use client';
 
 import { useAuth } from '@/app/hooks/useAuth';

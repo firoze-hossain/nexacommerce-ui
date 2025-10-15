@@ -15,6 +15,28 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { isAuthenticated, user, logout } = useAuth();
 
+    // Check if user is an admin (any role except CUSTOMER)
+    const isAdminUser = user?.role?.name !== 'CUSTOMER';
+
+    // Menu items for admin users
+    const adminMenuItems = [
+        { href: '/profile', label: 'My Profile' },
+        { href: '/dashboard', label: 'Dashboard' },
+    ];
+
+    // Menu items for customer users
+    const customerMenuItems = [
+        { href: '/orders', label: 'My Orders' },
+        { href: '/wishlist', label: 'My Wishlist' },
+        { href: '/profile', label: 'My Profile' },
+    ];
+
+    // Get the appropriate menu items based on user role
+    const getUserMenuItems = () => {
+        if (!isAuthenticated) return [];
+        return isAdminUser ? adminMenuItems : customerMenuItems;
+    };
+
     return (
         <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
             {/* Top Bar */}
@@ -87,18 +109,25 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                     </svg>
                                     <span>Hi, {user?.name?.split(' ')[0]}</span>
+                                    <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
+                                        {user?.role?.name}
+                                    </span>
                                 </button>
-                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                     <div className="py-2">
-                                        <Link href="/profile" className="block px-4 py-2 text-gray-700 hover:bg-gray-50">
-                                            My Profile
-                                        </Link>
-                                        <Link href="/orders" className="block px-4 py-2 text-gray-700 hover:bg-gray-50">
-                                            My Orders
-                                        </Link>
+                                        {/* Dynamic menu items based on role */}
+                                        {getUserMenuItems().map((item) => (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                                            >
+                                                {item.label}
+                                            </Link>
+                                        ))}
                                         <button
                                             onClick={logout}
-                                            className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50"
+                                            className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
                                         >
                                             Sign Out
                                         </button>
@@ -181,8 +210,27 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
                         <Link href="/brands" className="block text-gray-700 hover:text-indigo-600">
                             Brands
                         </Link>
-                        {/* Add Sign Up link to mobile menu */}
-                        {!isAuthenticated && (
+
+                        {/* Dynamic user menu for mobile */}
+                        {isAuthenticated ? (
+                            <>
+                                {getUserMenuItems().map((item) => (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        className="block text-gray-700 hover:text-indigo-600"
+                                    >
+                                        {item.label}
+                                    </Link>
+                                ))}
+                                <button
+                                    onClick={logout}
+                                    className="block text-gray-700 hover:text-indigo-600"
+                                >
+                                    Sign Out
+                                </button>
+                            </>
+                        ) : (
                             <Link
                                 href="/signup"
                                 className="block text-indigo-600 hover:text-indigo-700 font-medium"

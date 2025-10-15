@@ -1,3 +1,4 @@
+// app/dashboard/layout.tsx - UPDATED
 'use client';
 
 import { useEffect } from 'react';
@@ -11,14 +12,17 @@ export default function DashboardLayout({
                                         }: {
     children: React.ReactNode;
 }) {
-    const { isAuthenticated, loading } = useAuth();
+    const { isAuthenticated, user, loading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-        if (!loading && !isAuthenticated) {
-            router.replace('/login');
+        if (!loading) {
+            // Redirect if not authenticated OR if user is a customer
+            if (!isAuthenticated || user?.role?.name === 'CUSTOMER') {
+                router.replace('/');
+            }
         }
-    }, [loading, isAuthenticated, router]);
+    }, [loading, isAuthenticated, user, router]);
 
     if (loading) {
         return (
@@ -28,7 +32,8 @@ export default function DashboardLayout({
         );
     }
 
-    if (!isAuthenticated) {
+    // Don't render dashboard for customers
+    if (!isAuthenticated || user?.role?.name === 'CUSTOMER') {
         return null;
     }
 
