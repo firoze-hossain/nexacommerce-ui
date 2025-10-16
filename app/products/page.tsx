@@ -1,4 +1,4 @@
-// app/products/page.tsx - UPDATED VERSION
+// app/products/page.tsx - UPDATED WITH WISHLIST
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,6 +12,7 @@ import { useAuth } from '@/app/hooks/useAuth';
 import Header from '@/app/components/customers/header';
 import Footer from '@/app/components/customers/footer';
 import CartSidebar from '@/app/components/customers/cart-sidebar';
+import WishlistButton from '@/app/components/customers/wishlist-button';
 import { formatCurrency } from '@/app/lib/utils/formatters';
 import Link from 'next/link';
 
@@ -411,7 +412,18 @@ export default function ProductsPage() {
                                             const isAdding = addingToCart === product.id;
 
                                             return (
-                                                <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                                                <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group relative">
+
+                                                    {/* Wishlist Button - Top Right */}
+                                                    <div className="absolute top-3 right-3 z-10">
+                                                        <WishlistButton
+                                                            productId={product.id}
+                                                            size="sm"
+                                                            variant="icon"
+                                                            className="bg-white/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
+                                                        />
+                                                    </div>
+
                                                     {/* Product Image */}
                                                     <Link href={`/products/${product.id}`}>
                                                         <div className="relative overflow-hidden bg-gray-100">
@@ -426,7 +438,7 @@ export default function ProductsPage() {
                                                                 </div>
                                                             )}
                                                             {product.compareAtPrice && product.compareAtPrice > product.price && (
-                                                                <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                                                                <div className="absolute top-10 left-3 bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold">
                                                                     {Math.round((1 - product.price / product.compareAtPrice) * 100)}% OFF
                                                                 </div>
                                                             )}

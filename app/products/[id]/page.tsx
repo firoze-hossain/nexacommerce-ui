@@ -1,4 +1,4 @@
-// app/products/[id]/page.tsx - UPDATED VERSION
+// app/products/[id]/page.tsx - UPDATED WITH WISHLIST
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,6 +11,7 @@ import { useAuth } from '@/app/hooks/useAuth';
 import Header from '@/app/components/customers/header';
 import Footer from '@/app/components/customers/footer';
 import CartSidebar from '@/app/components/customers/cart-sidebar';
+import WishlistButton from '@/app/components/customers/wishlist-button';
 import { formatCurrency } from '@/app/lib/utils/formatters';
 import Link from 'next/link';
 
@@ -269,7 +270,16 @@ export default function ProductDetailPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
                         {/* Product Images */}
                         <div>
-                            <div className="bg-gray-100 rounded-2xl p-8 mb-4">
+                            <div className="bg-gray-100 rounded-2xl p-8 mb-4 relative">
+                                {/* Wishlist Button - Top Right */}
+                                <div className="absolute top-4 right-4 z-10">
+                                    <WishlistButton
+                                        productId={product.id}
+                                        size="md"
+                                        variant="icon"
+                                        className="bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-200"
+                                    />
+                                </div>
                                 <img
                                     src={product.images?.[selectedImage]?.imageUrl || '/api/placeholder/500/500'}
                                     alt={product.name}
@@ -431,7 +441,18 @@ export default function ProductDetailPage() {
                             <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Products</h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {relatedProducts.map((relatedProduct) => (
-                                    <div key={relatedProduct.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
+                                    <div key={relatedProduct.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group relative">
+
+                                        {/* Wishlist Button for Related Products */}
+                                        <div className="absolute top-3 right-3 z-10">
+                                            <WishlistButton
+                                                productId={relatedProduct.id}
+                                                size="sm"
+                                                variant="icon"
+                                                className="bg-white/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
+                                            />
+                                        </div>
+
                                         <img
                                             src={relatedProduct.images?.[0]?.imageUrl || '/api/placeholder/300/300'}
                                             alt={relatedProduct.name}
