@@ -1,4 +1,4 @@
-// app/categories/[slug]/page.tsx - UPDATED VERSION
+// app/categories/[slug]/page.tsx - UPDATED WITH WISHLIST
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,6 +13,7 @@ import { useAuth } from '@/app/hooks/useAuth';
 import Header from '@/app/components/customers/header';
 import Footer from '@/app/components/customers/footer';
 import CartSidebar from '@/app/components/customers/cart-sidebar';
+import WishlistButton from '@/app/components/customers/wishlist-button';
 import { formatCurrency } from '@/app/lib/utils/formatters';
 import Link from 'next/link';
 
@@ -290,7 +291,18 @@ export default function CategoryPage() {
                                     const isAdding = addingToCart === product.id;
 
                                     return (
-                                        <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                                        <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group relative">
+
+                                            {/* Wishlist Button - Top Right */}
+                                            <div className="absolute top-3 right-3 z-10">
+                                                <WishlistButton
+                                                    productId={product.id}
+                                                    size="sm"
+                                                    variant="icon"
+                                                    className="bg-white/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
+                                                />
+                                            </div>
+
                                             <Link href={`/products/${product.id}`}>
                                                 <div className="relative overflow-hidden bg-gray-100">
                                                     <img
@@ -301,6 +313,11 @@ export default function CategoryPage() {
                                                     {product.featured && (
                                                         <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
                                                             Featured
+                                                        </div>
+                                                    )}
+                                                    {product.compareAtPrice && product.compareAtPrice > product.price && (
+                                                        <div className="absolute top-10 left-3 bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                                                            {Math.round((1 - product.price / product.compareAtPrice) * 100)}% OFF
                                                         </div>
                                                     )}
                                                 </div>
@@ -326,6 +343,16 @@ export default function CategoryPage() {
                                                         <span className="text-sm text-gray-500 line-through">
                                                             {formatCurrency(product.compareAtPrice)}
                                                         </span>
+                                                    )}
+                                                </div>
+
+                                                {/* Stock Status */}
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <span className={`text-sm ${product.inStock ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {product.inStock ? 'In Stock' : 'Out of Stock'}
+                                                    </span>
+                                                    {product.lowStock && (
+                                                        <span className="text-sm text-orange-600">Low Stock</span>
                                                     )}
                                                 </div>
 

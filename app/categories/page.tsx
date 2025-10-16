@@ -1,4 +1,4 @@
-// app/categories/page.tsx - UPDATED VERSION
+// app/categories/page.tsx - UPDATED WITH WISHLIST
 'use client';
 
 import { useState, useEffect } from 'react';
