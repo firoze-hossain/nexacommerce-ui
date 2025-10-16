@@ -1,9 +1,10 @@
-// app/components/customers/header.tsx
+// app/components/customers/header.tsx - UPDATED WITH WISHLIST
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useWishlist } from '@/app/contexts/wishlist-context';
 
 interface HeaderProps {
     cartItemCount: number;
@@ -14,6 +15,7 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { isAuthenticated, user, logout } = useAuth();
+    const { wishlistCount } = useWishlist();
 
     // Check if user is an admin (any role except CUSTOMER)
     const isAdminUser = user?.role?.name !== 'CUSTOMER';
@@ -86,6 +88,34 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
 
                     {/* User Actions */}
                     <div className="flex items-center space-x-4">
+                        {/* Wishlist Icon - Only show for authenticated customers */}
+                        {isAuthenticated && !isAdminUser && (
+                            <Link
+                                href="/wishlist"
+                                className="relative p-2 text-gray-700 hover:text-indigo-600 transition-colors"
+                                title="My Wishlist"
+                            >
+                                <svg
+                                    className="w-6 h-6"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                    />
+                                </svg>
+                                {wishlistCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                                        {wishlistCount > 99 ? '99+' : wishlistCount}
+                                    </span>
+                                )}
+                            </Link>
+                        )}
+
                         {/* Cart */}
                         <button
                             onClick={onCartClick}
@@ -95,8 +125,8 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
                             {cartItemCount > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                    {cartItemCount}
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                                    {cartItemCount > 99 ? '99+' : cartItemCount}
                                 </span>
                             )}
                         </button>
@@ -210,6 +240,34 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
                         <Link href="/brands" className="block text-gray-700 hover:text-indigo-600">
                             Brands
                         </Link>
+
+                        {/* Wishlist for Mobile - Only show for authenticated customers */}
+                        {isAuthenticated && !isAdminUser && (
+                            <Link
+                                href="/wishlist"
+                                className="block text-gray-700 hover:text-indigo-600 flex items-center"
+                            >
+                                <svg
+                                    className="w-5 h-5 mr-2"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                    />
+                                </svg>
+                                My Wishlist
+                                {wishlistCount > 0 && (
+                                    <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                                        {wishlistCount}
+                                    </span>
+                                )}
+                            </Link>
+                        )}
 
                         {/* Dynamic user menu for mobile */}
                         {isAuthenticated ? (

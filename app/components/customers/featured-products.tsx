@@ -1,7 +1,10 @@
-// app/components/customers/featured-products.tsx - UPDATED VERSION
-import {Product} from '@/app/lib/types/product';
-import {formatCurrency} from '@/app/lib/utils/formatters';
+// app/components/customers/featured-products.tsx - UPDATED WITH WISHLIST
+'use client';
+
+import { Product } from '@/app/lib/types/product';
+import { formatCurrency } from '@/app/lib/utils/formatters';
 import Link from 'next/link';
+import WishlistButton from './wishlist-button';
 
 interface FeaturedProductsProps {
     products: Product[];
@@ -9,7 +12,7 @@ interface FeaturedProductsProps {
     addingToCart?: number | null;
 }
 
-export default function FeaturedProducts({products, onAddToCart, addingToCart}: FeaturedProductsProps) {
+export default function FeaturedProducts({ products, onAddToCart, addingToCart }: FeaturedProductsProps) {
     if (products.length === 0) {
         return (
             <section className="py-16 bg-gray-50">
@@ -45,7 +48,18 @@ export default function FeaturedProducts({products, onAddToCart, addingToCart}: 
 
                         return (
                             <div key={product.id}
-                                 className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                                 className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group relative">
+
+                                {/* Wishlist Button - Top Right */}
+                                <div className="absolute top-3 right-3 z-10">
+                                    <WishlistButton
+                                        productId={product.id}
+                                        size="sm"
+                                        variant="icon"
+                                        className="bg-white/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
+                                    />
+                                </div>
+
                                 {/* Product Image */}
                                 <Link href={`/products/${product.id}`}>
                                     <div className="relative overflow-hidden bg-gray-100">
@@ -55,14 +69,12 @@ export default function FeaturedProducts({products, onAddToCart, addingToCart}: 
                                             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                                         />
                                         {product.featured && (
-                                            <div
-                                                className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                                            <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
                                                 Featured
                                             </div>
                                         )}
                                         {product.compareAtPrice && product.compareAtPrice > product.price && (
-                                            <div
-                                                className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                                            <div className="absolute top-10 left-3 bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold">
                                                 {Math.round((1 - product.price / product.compareAtPrice) * 100)}% OFF
                                             </div>
                                         )}

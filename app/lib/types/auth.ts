@@ -19,6 +19,8 @@ export interface User {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+    customerId?: number;
+    vendorId?: number;
 }
 
 export interface Permission {
