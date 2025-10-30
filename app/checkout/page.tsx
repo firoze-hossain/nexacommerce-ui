@@ -1,0 +1,1069 @@
+// app/checkout/page.tsx - PROFESSIONAL SINGLE PHONE VERSION WITH SUCCESS HANDLING
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/app/hooks/useAuth';
+import Header from '@/app/components/customers/header';
+import Footer from '@/app/components/customers/footer';
+import { CartService } from '@/app/lib/api/cart-service';
+import { OrderService } from '@/app/lib/api/order-service';
+import { AddressService } from '@/app/lib/api/address-service';
+import { CartResponse, CartItemResponse } from '@/app/lib/types/cart';
+import { Address, GuestAddressRequest } from '@/app/lib/types/address';
+import { formatCurrency } from '@/app/lib/utils/formatters';
+import { useRouter } from 'next/navigation';
+
+interface CheckoutForm {
+    // For authenticated users
+    shippingAddressId: number;
+    billingAddressId: number;
+    useShippingAsBilling: boolean;
+    paymentMethod: string;
+    customerNotes: string;
+
+    // For guest users - SIMPLIFIED
+    guestEmail: string;
+    guestShippingAddress: GuestAddressRequest;
+    guestBillingAddress: GuestAddressRequest;
+}
+
+export default function CheckoutPage() {
+    const { isAuthenticated, user } = useAuth();
+    const [cart, setCart] = useState<CartResponse | null>(null);
+    const [addresses, setAddresses] = useState<Address[]>([]);
+    const [popularAreas, setPopularAreas] = useState<string[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+    const [cartItemCount, setCartItemCount] = useState(0);
+    const [showAddressForm, setShowAddressForm] = useState(false);
+    const router = useRouter();
+
+    const [form, setForm] = useState<CheckoutForm>({
+        shippingAddressId: 0,
+        billingAddressId: 0,
+        useShippingAsBilling: true,
+        paymentMethod: 'cod',
+        customerNotes: '',
+        guestEmail: '',
+        guestShippingAddress: {
+            fullName: '',
+            phone: '',
+            area: '',
+            addressLine: '',
+            city: 'Dhaka',
+            landmark: ''
+        },
+        guestBillingAddress: {
+            fullName: '',
+            phone: '',
+            area: '',
+            addressLine: '',
+            city: 'Dhaka',
+            landmark: ''
+        }
+    });
+
+    useEffect(() => {
+        loadCheckoutData();
+        loadPopularAreas();
+    }, [isAuthenticated]);
+
+    const getSessionId = (): string => {
+        if (typeof window !== 'undefined') {
+            let sessionId = localStorage.getItem('guestSessionId');
+            if (!sessionId) {
+                sessionId = 'guest-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('guestSessionId', sessionId);
+            }
+            return sessionId;
+        }
+        return '';
+    };
+
+    const loadCheckoutData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            setSuccess(null);
+
+            let cartResponse;
+
+            if (isAuthenticated) {
+                cartResponse = await CartService.getMyCart();
+                const addressResponse = await AddressService.getMyAddresses();
+                if (addressResponse.success && addressResponse.data) {
+                    setAddresses(addressResponse.data);
+                    const defaultAddress = addressResponse.data.find(addr => addr.isDefault);
+                    if (defaultAddress) {
+                        setForm(prev => ({
+                            ...prev,
+                            shippingAddressId: defaultAddress.id,
+                            billingAddressId: defaultAddress.id
+                        }));
+                    }
+                }
+            } else {
+                const sessionId = getSessionId();
+                cartResponse = await CartService.getGuestCart(sessionId);
+            }
+
+            if (!cartResponse.success || !cartResponse.data) {
+                setError('Failed to load cart');
+                return;
+            }
+            setCart(cartResponse.data);
+
+            const totalItems = cartResponse.data.items.reduce((total: number, item: CartItemResponse) => total + item.quantity, 0);
+            setCartItemCount(totalItems);
+
+        } catch (err) {
+            console.error('Error loading checkout data:', err);
+            setError('Failed to load checkout data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadPopularAreas = async () => {
+        try {
+            const response = await AddressService.getPopularAreas();
+            if (response.success) {
+                setPopularAreas(response.data);
+            }
+        } catch (error) {
+            console.error('Error loading popular areas:', error);
+        }
+    };
+
+    const handleGuestFieldChange = (field: string, value: string, addressType: 'shipping' | 'billing' = 'shipping') => {
+        if (addressType === 'shipping') {
+            setForm(prev => ({
+                ...prev,
+                guestShippingAddress: {
+                    ...prev.guestShippingAddress,
+                    [field]: value
+                }
+            }));
+        } else {
+            setForm(prev => ({
+                ...prev,
+                guestBillingAddress: {
+                    ...prev.guestBillingAddress,
+                    [field]: value
+                }
+            }));
+        }
+    };
+
+    const validateGuestForm = (): boolean => {
+        const { guestEmail, guestShippingAddress } = form;
+
+        if (!guestEmail) {
+            setError('Email is required for guest checkout');
+            return false;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(guestEmail)) {
+            setError('Please enter a valid email address');
+            return false;
+        }
+
+        if (!guestShippingAddress.fullName) {
+            setError('Full name is required');
+            return false;
+        }
+
+        if (!guestShippingAddress.phone) {
+            setError('Phone number is required');
+            return false;
+        }
+
+        const phoneRegex = /^01[3-9]\d{8}$/;
+        if (!phoneRegex.test(guestShippingAddress.phone)) {
+            setError('Please enter a valid Bangladeshi phone number (01XXXXXXXXX)');
+            return false;
+        }
+
+        if (!guestShippingAddress.area) {
+            setError('Area is required');
+            return false;
+        }
+
+        if (!guestShippingAddress.addressLine) {
+            setError('Address line is required');
+            return false;
+        }
+
+        return true;
+    };
+
+    const validateLoggedInForm = (): boolean => {
+        if (!form.shippingAddressId) {
+            setError('Please select a shipping address');
+            return false;
+        }
+        return true;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!cart || cart.items.length === 0) {
+            setError('Your cart is empty');
+            return;
+        }
+
+        let isValid = false;
+        if (isAuthenticated) {
+            isValid = validateLoggedInForm();
+        } else {
+            isValid = validateGuestForm();
+        }
+
+        if (!isValid) return;
+
+        try {
+            setProcessing(true);
+            setError(null);
+            setSuccess(null);
+
+            let response;
+
+            if (isAuthenticated) {
+                const orderRequest = {
+                    shippingAddressId: form.shippingAddressId,
+                    billingAddressId: form.useShippingAsBilling ? undefined : form.billingAddressId,
+                    useShippingAsBilling: form.useShippingAsBilling,
+                    customerNotes: form.customerNotes,
+                    shippingAmount: getShippingAmount(),
+                    items: cart.items.map(item => ({
+                        productId: item.productId,
+                        quantity: item.quantity
+                    }))
+                };
+
+                response = await OrderService.createOrder(orderRequest);
+
+                if (response.success) {
+                    await CartService.clearCart();
+                }
+            } else {
+                // PROFESSIONAL SINGLE PHONE APPROACH
+                const guestOrderRequest = {
+                    guestEmail: form.guestEmail,
+                    guestName: form.guestShippingAddress.fullName,
+                    // No separate guestPhone - using shipping address phone
+                    shippingAddress: {
+                        fullName: form.guestShippingAddress.fullName,
+                        phone: form.guestShippingAddress.phone,
+                        area: form.guestShippingAddress.area,
+                        addressLine: form.guestShippingAddress.addressLine,
+                        city: form.guestShippingAddress.city,
+                        landmark: form.guestShippingAddress.landmark
+                    },
+                    billingAddress: form.useShippingAsBilling ? undefined : {
+                        fullName: form.guestBillingAddress.fullName,
+                        phone: form.guestBillingAddress.phone,
+                        area: form.guestBillingAddress.area,
+                        addressLine: form.guestBillingAddress.addressLine,
+                        city: form.guestBillingAddress.city,
+                        landmark: form.guestBillingAddress.landmark
+                    },
+                    customerNotes: form.customerNotes,
+                    shippingAmount: getShippingAmount(),
+                    taxAmount: 0,
+                    discountAmount: 0,
+                    items: cart.items.map(item => ({
+                        productId: item.productId,
+                        quantity: item.quantity
+                    })),
+                    sessionId: getSessionId()
+                };
+
+                response = await OrderService.createGuestOrder(guestOrderRequest);
+
+                // Clear guest cart - handle gracefully even if it fails
+                try {
+                    const sessionId = getSessionId();
+                    await CartService.clearGuestCart(sessionId);
+                    localStorage.removeItem('guestSessionId');
+                } catch (cartError) {
+                    console.warn('Cart clearing failed, but order was placed successfully');
+                    // Continue with order success even if cart clearing fails
+                }
+            }
+
+            if (response.success) {
+                // Show professional success message
+                const orderNumber = response.data.orderNumber;
+                const totalAmount = formatCurrency(getTotal());
+                const email = isAuthenticated ? user?.email : form.guestEmail;
+
+                setSuccess(`Order #${orderNumber} placed successfully! Total: ${totalAmount}. Confirmation sent to ${email}. Redirecting to order details...`);
+
+                // Redirect to order confirmation after a short delay
+                setTimeout(() => {
+                    router.push(`/orders/${orderNumber}`);
+                }, 3000);
+
+            } else {
+                setError(response.message || 'Failed to place order');
+            }
+        } catch (err: any) {
+            console.error('Error placing order:', err);
+            setError(err.message || 'Failed to place order. Please try again.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const getSubtotal = () => cart?.totalAmount || 0;
+    const getShippingAmount = () => {
+        const subtotal = getSubtotal();
+        if (subtotal > 1000) return 0;
+        return 60;
+    };
+    const getTotal = () => getSubtotal() + getShippingAmount();
+
+    const hasOutOfStockItems = cart?.items.some(item => !item.inStock);
+
+    const handleAddNewAddress = () => {
+        setShowAddressForm(true);
+    };
+
+    const handleSaveNewAddress = async (addressData: any) => {
+        try {
+            const response = await AddressService.createAddress({
+                ...addressData,
+                addressType: 'HOME',
+                isDefault: addresses.length === 0
+            });
+
+            if (response.success) {
+                setShowAddressForm(false);
+                loadCheckoutData();
+            }
+        } catch (error) {
+            console.error('Error saving address:', error);
+            setError('Failed to save address');
+        }
+    };
+
+    const handleLoginRedirect = () => {
+        const sessionId = getSessionId();
+        localStorage.setItem('pendingCartSession', sessionId);
+        router.push('/login?redirect=checkout');
+    };
+
+    const handleCreateAccountRedirect = () => {
+        const sessionId = getSessionId();
+        localStorage.setItem('pendingCartSession', sessionId);
+        router.push('/signup?redirect=checkout');
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50">
+                <Header cartItemCount={cartItemCount} onCartClick={() => {}} />
+                <div className="container mx-auto px-4 py-16 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading checkout...</p>
+                </div>
+                <Footer />
+            </div>
+        );
+    }
+
+    if (!cart || cart.items.length === 0) {
+        return (
+            <div className="min-h-screen bg-gray-50">
+                <Header cartItemCount={cartItemCount} onCartClick={() => {}} />
+                <div className="container mx-auto px-4 py-16 text-center">
+                    <div className="text-6xl mb-4">🛒</div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
+                    <p className="text-gray-600 mb-8">Add some products to your cart first.</p>
+                    <button
+                        onClick={() => router.push('/products')}
+                        className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                        Continue Shopping
+                    </button>
+                </div>
+                <Footer />
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            <Header cartItemCount={cartItemCount} onCartClick={() => {}} />
+
+            <main className="container mx-auto px-4 py-8">
+                <div className="max-w-6xl mx-auto">
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
+                        <p className="text-gray-600 mt-2">
+                            {isAuthenticated ? `Welcome back, ${user?.name}` : 'Complete your purchase as guest'}
+                        </p>
+
+                        {!isAuthenticated && (
+                            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-blue-800 font-medium">Shopping as guest</p>
+                                        <p className="text-blue-600 text-sm">
+                                            Create an account for faster checkout and order tracking
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleLoginRedirect}
+                                            className="bg-white text-blue-600 border border-blue-300 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors text-sm"
+                                        >
+                                            Sign In
+                                        </button>
+                                        <button
+                                            onClick={handleCreateAccountRedirect}
+                                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                                        >
+                                            Create Account
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Success Message */}
+                    {success && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+                            <div className="flex items-start">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3 flex-1">
+                                    <h3 className="text-green-800 font-semibold text-lg">Order Placed Successfully!</h3>
+                                    <div className="mt-2 text-green-700">
+                                        <p className="text-sm">{success}</p>
+                                    </div>
+                                    <div className="mt-4 flex items-center text-sm text-green-600">
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Redirecting to order details...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Error Message */}
+                    {error && !success && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                            <div className="flex items-center">
+                                <svg className="h-5 w-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-red-800">{error}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {hasOutOfStockItems && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                            <p className="text-red-700">
+                                Some items in your cart are out of stock. Please remove them before proceeding.
+                            </p>
+                        </div>
+                    )}
+
+                    {!success && (
+                        <form onSubmit={handleSubmit}>
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {/* Checkout Form */}
+                                <div className="lg:col-span-2 space-y-6">
+                                    {/* Contact Information - For Guest Users */}
+                                    {!isAuthenticated && (
+                                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                            <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Information</h2>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Email Address *
+                                                    </label>
+                                                    <input
+                                                        type="email"
+                                                        value={form.guestEmail}
+                                                        onChange={(e) => setForm(prev => ({ ...prev, guestEmail: e.target.value }))}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                        placeholder="your@email.com"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Shipping Address */}
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h2 className="text-xl font-semibold text-gray-900">
+                                                Shipping Address
+                                            </h2>
+                                            {isAuthenticated && !showAddressForm && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAddNewAddress}
+                                                    className="text-indigo-600 hover:text-indigo-700 font-medium text-sm"
+                                                >
+                                                    + Add New Address
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {isAuthenticated ? (
+                                            showAddressForm ? (
+                                                <div className="space-y-4">
+                                                    <NewAddressForm
+                                                        onSubmit={handleSaveNewAddress}
+                                                        onCancel={() => setShowAddressForm(false)}
+                                                        popularAreas={popularAreas}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {addresses.length > 0 ? (
+                                                        <div className="grid gap-4">
+                                                            {addresses.map(address => (
+                                                                <label key={address.id} className="flex items-start space-x-3 p-4 border border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="shippingAddress"
+                                                                        value={address.id}
+                                                                        checked={form.shippingAddressId === address.id}
+                                                                        onChange={(e) => setForm(prev => ({ ...prev, shippingAddressId: Number(e.target.value) }))}
+                                                                        className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                                                                    />
+                                                                    <div className="flex-1">
+                                                                        <p className="font-medium text-gray-900">{address.fullName}</p>
+                                                                        <p className="text-gray-600 text-sm mt-1">{address.fullAddress}</p>
+                                                                        <p className="text-gray-600 text-sm">{address.phone}</p>
+                                                                        {address.isDefault && (
+                                                                            <span className="inline-block bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded mt-2">Default</span>
+                                                                        )}
+                                                                    </div>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center py-8">
+                                                            <p className="text-gray-600 mb-4">No addresses found</p>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleAddNewAddress}
+                                                                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                                                            >
+                                                                Add Your First Address
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+                                        ) : (
+                                            // Guest user address form - WITH SINGLE PHONE
+                                            <div className="grid grid-cols-1 gap-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Full Name *
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={form.guestShippingAddress.fullName}
+                                                            onChange={(e) => handleGuestFieldChange('fullName', e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                            placeholder="John Doe"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Phone Number *
+                                                        </label>
+                                                        <input
+                                                            type="tel"
+                                                            value={form.guestShippingAddress.phone}
+                                                            onChange={(e) => handleGuestFieldChange('phone', e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                            placeholder="01XXXXXXXXX"
+                                                            required
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Area *
+                                                    </label>
+                                                    <select
+                                                        value={form.guestShippingAddress.area}
+                                                        onChange={(e) => handleGuestFieldChange('area', e.target.value)}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                        required
+                                                    >
+                                                        <option value="">Select Area</option>
+                                                        {popularAreas.map(area => (
+                                                            <option key={area} value={area}>{area}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Address Line *
+                                                    </label>
+                                                    <textarea
+                                                        value={form.guestShippingAddress.addressLine}
+                                                        onChange={(e) => handleGuestFieldChange('addressLine', e.target.value)}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                        placeholder="House #, Road #, Building Name, Floor, Flat No"
+                                                        rows={3}
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Landmark (Optional)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={form.guestShippingAddress.landmark}
+                                                        onChange={(e) => handleGuestFieldChange('landmark', e.target.value)}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                        placeholder="Near mosque, school, market, etc."
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Billing Address */}
+                                    {(isAuthenticated || !form.useShippingAsBilling) && (
+                                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                            <h2 className="text-xl font-semibold text-gray-900 mb-4">Billing Address</h2>
+                                            <div className="space-y-4">
+                                                <label className="flex items-center space-x-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={form.useShippingAsBilling}
+                                                        onChange={(e) => setForm(prev => ({ ...prev, useShippingAsBilling: e.target.checked }))}
+                                                        className="text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <span className="text-gray-700">Same as shipping address</span>
+                                                </label>
+
+                                                {!form.useShippingAsBilling && (
+                                                    isAuthenticated ? (
+                                                        <div className="grid gap-4">
+                                                            {addresses.map(address => (
+                                                                <label key={address.id} className="flex items-start space-x-3 p-4 border border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="billingAddress"
+                                                                        value={address.id}
+                                                                        checked={form.billingAddressId === address.id}
+                                                                        onChange={(e) => setForm(prev => ({ ...prev, billingAddressId: Number(e.target.value) }))}
+                                                                        className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                                                                    />
+                                                                    <div className="flex-1">
+                                                                        <p className="font-medium text-gray-900">{address.fullName}</p>
+                                                                        <p className="text-gray-600 text-sm mt-1">{address.fullAddress}</p>
+                                                                        <p className="text-gray-600 text-sm">{address.phone}</p>
+                                                                    </div>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 gap-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                        Full Name *
+                                                                    </label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={form.guestBillingAddress.fullName}
+                                                                        onChange={(e) => handleGuestFieldChange('fullName', e.target.value, 'billing')}
+                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                        placeholder="John Doe"
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                        Phone Number *
+                                                                    </label>
+                                                                    <input
+                                                                        type="tel"
+                                                                        value={form.guestBillingAddress.phone}
+                                                                        onChange={(e) => handleGuestFieldChange('phone', e.target.value, 'billing')}
+                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                        placeholder="01XXXXXXXXX"
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Area *
+                                                                </label>
+                                                                <select
+                                                                    value={form.guestBillingAddress.area}
+                                                                    onChange={(e) => handleGuestFieldChange('area', e.target.value, 'billing')}
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                    required
+                                                                >
+                                                                    <option value="">Select Area</option>
+                                                                    {popularAreas.map(area => (
+                                                                        <option key={area} value={area}>{area}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Address Line *
+                                                                </label>
+                                                                <textarea
+                                                                    value={form.guestBillingAddress.addressLine}
+                                                                    onChange={(e) => handleGuestFieldChange('addressLine', e.target.value, 'billing')}
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                    placeholder="House #, Road #, Building Name, Floor, Flat No"
+                                                                    rows={3}
+                                                                    required
+                                                                />
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Landmark (Optional)
+                                                                </label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={form.guestBillingAddress.landmark}
+                                                                    onChange={(e) => handleGuestFieldChange('landmark', e.target.value, 'billing')}
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                    placeholder="Near mosque, school, market, etc."
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Payment Method */}
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                        <h2 className="text-xl font-semibold text-gray-900 mb-4">Payment Method</h2>
+                                        <div className="grid gap-4">
+                                            <label className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="paymentMethod"
+                                                    value="cod"
+                                                    checked={form.paymentMethod === 'cod'}
+                                                    onChange={(e) => setForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                                                    className="text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                                                        💰
+                                                    </div>
+                                                    <span className="text-gray-700">Cash on Delivery</span>
+                                                </div>
+                                            </label>
+
+                                            <label className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="paymentMethod"
+                                                    value="card"
+                                                    checked={form.paymentMethod === 'card'}
+                                                    onChange={(e) => setForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                                                    className="text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                                                        💳
+                                                    </div>
+                                                    <span className="text-gray-700">Credit/Debit Card</span>
+                                                </div>
+                                            </label>
+
+                                            <label className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="paymentMethod"
+                                                    value="bkash"
+                                                    checked={form.paymentMethod === 'bkash'}
+                                                    onChange={(e) => setForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                                                    className="text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                                                        📱
+                                                    </div>
+                                                    <span className="text-gray-700">bKash</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Order Notes */}
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                        <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Notes (Optional)</h2>
+                                        <textarea
+                                            value={form.customerNotes}
+                                            onChange={(e) => setForm(prev => ({ ...prev, customerNotes: e.target.value }))}
+                                            placeholder="Any special instructions for your order..."
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            rows={3}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Order Summary */}
+                                <div className="space-y-6">
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
+                                        <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Summary</h2>
+
+                                        <div className="space-y-3 mb-4">
+                                            {cart.items.map(item => (
+                                                <div key={item.id} className="flex items-center space-x-3">
+                                                    <img
+                                                        src={item.productImage || '/api/placeholder/60/60'}
+                                                        alt={item.productName}
+                                                        className="w-12 h-12 object-cover rounded"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-gray-900 truncate">{item.productName}</p>
+                                                        <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
+                                                    </div>
+                                                    <p className="text-sm font-semibold text-gray-900">{formatCurrency(item.subtotal)}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="space-y-2 border-t border-gray-200 pt-4">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Subtotal</span>
+                                                <span className="font-medium">{formatCurrency(getSubtotal())}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Shipping</span>
+                                                <span className="font-medium">
+                                                    {getShippingAmount() === 0 ? 'FREE' : `${formatCurrency(getShippingAmount())}`}
+                                                </span>
+                                            </div>
+                                            {cart.totalDiscount > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Discount</span>
+                                                    <span className="font-medium text-green-600">-{formatCurrency(cart.totalDiscount)}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between border-t border-gray-200 pt-2">
+                                                <span className="font-semibold text-gray-900">Total</span>
+                                                <span className="font-bold text-lg text-gray-900">{formatCurrency(getTotal())}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                            <p className="text-green-700 text-sm">
+                                                {getShippingAmount() === 0 ? '🎉 Free shipping on orders over ৳1000' : '🚚 Standard delivery within 2-3 days'}
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={processing || hasOutOfStockItems ||
+                                                (isAuthenticated && !form.shippingAddressId) ||
+                                                (!isAuthenticated && !form.guestEmail)
+                                            }
+                                            className="w-full bg-indigo-600 text-white py-4 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors mt-6 flex items-center justify-center"
+                                        >
+                                            {processing ? (
+                                                <>
+                                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                                    Processing...
+                                                </>
+                                            ) : (
+                                                `Place Order - ${formatCurrency(getTotal())}`
+                                            )}
+                                        </button>
+
+                                        <p className="text-gray-600 text-xs text-center mt-3">
+                                            By placing your order, you agree to our Terms of Service and Privacy Policy.
+                                        </p>
+
+                                        {!isAuthenticated && (
+                                            <p className="text-gray-500 text-xs text-center mt-2">
+                                                You'll receive order updates via email
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                        <div className="flex items-center justify-center space-x-6 text-gray-400">
+                                            <div className="text-center">
+                                                <div className="text-2xl mb-1">🔒</div>
+                                                <p className="text-xs">Secure Payment</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-2xl mb-1">🚚</div>
+                                                <p className="text-xs">Fast Delivery</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-2xl mb-1">↩️</div>
+                                                <p className="text-xs">Easy Returns</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    )}
+                </div>
+            </main>
+
+            <Footer />
+        </div>
+    );
+}
+
+// New Address Form Component (unchanged)
+function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
+    onSubmit: (data: any) => void;
+    onCancel: () => void;
+    popularAreas: string[];
+}) {
+    const [formData, setFormData] = useState({
+        fullName: '',
+        phone: '',
+        area: '',
+        addressLine: '',
+        city: 'Dhaka',
+        landmark: '',
+        isDefault: false
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSubmit(formData);
+    };
+
+    const handleChange = (field: string, value: string | boolean) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-medium mb-2">Full Name *</label>
+                    <input
+                        type="text"
+                        value={formData.fullName}
+                        onChange={(e) => handleChange('fullName', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        required
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-2">Phone Number *</label>
+                    <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleChange('phone', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="01XXXXXXXXX"
+                        required
+                    />
+                </div>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium mb-2">Area *</label>
+                <select
+                    value={formData.area}
+                    onChange={(e) => handleChange('area', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                >
+                    <option value="">Select Area</option>
+                    {popularAreas.map(area => (
+                        <option key={area} value={area}>{area}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium mb-2">Address Line *</label>
+                <textarea
+                    value={formData.addressLine}
+                    onChange={(e) => handleChange('addressLine', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="House #, Road #, Building Name, Floor, Flat No"
+                    rows={3}
+                    required
+                />
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium mb-2">Landmark (Optional)</label>
+                <input
+                    type="text"
+                    value={formData.landmark}
+                    onChange={(e) => handleChange('landmark', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Near mosque, school, market, etc."
+                />
+            </div>
+
+            <div className="flex items-center">
+                <input
+                    type="checkbox"
+                    checked={formData.isDefault}
+                    onChange={(e) => handleChange('isDefault', e.target.checked)}
+                    className="mr-2"
+                />
+                <label>Set as default address</label>
+            </div>
+
+            <div className="flex gap-3">
+                <button
+                    type="submit"
+                    className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                    Save Address
+                </button>
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                    Cancel
+                </button>
+            </div>
+        </form>
+    );
+}
