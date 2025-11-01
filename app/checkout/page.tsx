@@ -1,4 +1,4 @@
-// app/checkout/page.tsx - PROFESSIONAL SINGLE PHONE VERSION WITH SUCCESS HANDLING
+// app/checkout/page.tsx - PROFESSIONAL LOCATION-BASED SHIPPING
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,11 +9,14 @@ import { CartService } from '@/app/lib/api/cart-service';
 import { OrderService } from '@/app/lib/api/order-service';
 import { AddressService } from '@/app/lib/api/address-service';
 import { CartResponse, CartItemResponse } from '@/app/lib/types/cart';
-import { Address, GuestAddressRequest } from '@/app/lib/types/address';
+import { Address, GuestAddressRequest, LocationDataResponse, ShippingRate } from '@/app/lib/types/address';
 import { formatCurrency } from '@/app/lib/utils/formatters';
 import { useRouter } from 'next/navigation';
 
 interface CheckoutForm {
+    // Location type
+    locationType: 'inside-dhaka' | 'outside-dhaka' | '';
+
     // For authenticated users
     shippingAddressId: number;
     billingAddressId: number;
@@ -21,17 +24,24 @@ interface CheckoutForm {
     paymentMethod: string;
     customerNotes: string;
 
-    // For guest users - SIMPLIFIED
+    // For guest users
     guestEmail: string;
-    guestShippingAddress: GuestAddressRequest;
-    guestBillingAddress: GuestAddressRequest;
+    guestShippingAddress: GuestAddressRequest & {
+        city: string;
+        locationType: 'inside-dhaka' | 'outside-dhaka' | '';
+    };
+    guestBillingAddress: GuestAddressRequest & {
+        city: string;
+        locationType: 'inside-dhaka' | 'outside-dhaka' | '';
+    };
 }
 
 export default function CheckoutPage() {
     const { isAuthenticated, user } = useAuth();
     const [cart, setCart] = useState<CartResponse | null>(null);
     const [addresses, setAddresses] = useState<Address[]>([]);
-    const [popularAreas, setPopularAreas] = useState<string[]>([]);
+    const [locationData, setLocationData] = useState<LocationDataResponse | null>(null);
+    const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -41,6 +51,7 @@ export default function CheckoutPage() {
     const router = useRouter();
 
     const [form, setForm] = useState<CheckoutForm>({
+        locationType: '',
         shippingAddressId: 0,
         billingAddressId: 0,
         useShippingAsBilling: true,
@@ -53,7 +64,8 @@ export default function CheckoutPage() {
             area: '',
             addressLine: '',
             city: 'Dhaka',
-            landmark: ''
+            landmark: '',
+            locationType: ''
         },
         guestBillingAddress: {
             fullName: '',
@@ -61,14 +73,27 @@ export default function CheckoutPage() {
             area: '',
             addressLine: '',
             city: 'Dhaka',
-            landmark: ''
+            landmark: '',
+            locationType: ''
         }
     });
 
     useEffect(() => {
         loadCheckoutData();
-        loadPopularAreas();
+        loadLocationData();
     }, [isAuthenticated]);
+
+    const loadLocationData = async () => {
+        try {
+            const response = await AddressService.getLocationData();
+            if (response.success) {
+                setLocationData(response.data);
+                setShippingRates(response.data.shippingRates);
+            }
+        } catch (error) {
+            console.error('Error loading location data:', error);
+        }
+    };
 
     const getSessionId = (): string => {
         if (typeof window !== 'undefined') {
@@ -100,7 +125,8 @@ export default function CheckoutPage() {
                         setForm(prev => ({
                             ...prev,
                             shippingAddressId: defaultAddress.id,
-                            billingAddressId: defaultAddress.id
+                            billingAddressId: defaultAddress.id,
+                            locationType: defaultAddress.isInsideDhaka ? 'inside-dhaka' : 'outside-dhaka'
                         }));
                     }
                 }
@@ -126,15 +152,16 @@ export default function CheckoutPage() {
         }
     };
 
-    const loadPopularAreas = async () => {
-        try {
-            const response = await AddressService.getPopularAreas();
-            if (response.success) {
-                setPopularAreas(response.data);
+    const handleLocationTypeChange = (locationType: 'inside-dhaka' | 'outside-dhaka') => {
+        setForm(prev => ({
+            ...prev,
+            locationType,
+            guestShippingAddress: {
+                ...prev.guestShippingAddress,
+                locationType,
+                city: locationType === 'inside-dhaka' ? 'Dhaka' : prev.guestShippingAddress.city
             }
-        } catch (error) {
-            console.error('Error loading popular areas:', error);
-        }
+        }));
     };
 
     const handleGuestFieldChange = (field: string, value: string, addressType: 'shipping' | 'billing' = 'shipping') => {
@@ -157,8 +184,45 @@ export default function CheckoutPage() {
         }
     };
 
+    const handleCityChange = (city: string, addressType: 'shipping' | 'billing' = 'shipping') => {
+        const isDhakaCity = city === 'Dhaka';
+
+        if (addressType === 'shipping') {
+            setForm(prev => ({
+                ...prev,
+                guestShippingAddress: {
+                    ...prev.guestShippingAddress,
+                    city,
+                    locationType: isDhakaCity ? 'inside-dhaka' : 'outside-dhaka'
+                },
+                locationType: isDhakaCity ? 'inside-dhaka' : 'outside-dhaka'
+            }));
+        } else {
+            setForm(prev => ({
+                ...prev,
+                guestBillingAddress: {
+                    ...prev.guestBillingAddress,
+                    city,
+                    locationType: isDhakaCity ? 'inside-dhaka' : 'outside-dhaka'
+                }
+            }));
+        }
+    };
+
+    const getAreaOptions = () => {
+        if (!locationData) return [];
+
+        if (form.locationType === 'inside-dhaka') {
+            return locationData.dhakaMetroAreas;
+        } else if (form.guestShippingAddress.city === 'Dhaka' || form.locationType === 'outside-dhaka') {
+            return [...locationData.dhakaSuburbanAreas, ...locationData.otherCities];
+        } else {
+            return locationData.otherCities;
+        }
+    };
+
     const validateGuestForm = (): boolean => {
-        const { guestEmail, guestShippingAddress } = form;
+        const { guestEmail, guestShippingAddress, locationType } = form;
 
         if (!guestEmail) {
             setError('Email is required for guest checkout');
@@ -168,6 +232,11 @@ export default function CheckoutPage() {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(guestEmail)) {
             setError('Please enter a valid email address');
+            return false;
+        }
+
+        if (!locationType) {
+            setError('Please select your location type');
             return false;
         }
 
@@ -251,11 +320,9 @@ export default function CheckoutPage() {
                     await CartService.clearCart();
                 }
             } else {
-                // PROFESSIONAL SINGLE PHONE APPROACH
                 const guestOrderRequest = {
                     guestEmail: form.guestEmail,
                     guestName: form.guestShippingAddress.fullName,
-                    // No separate guestPhone - using shipping address phone
                     shippingAddress: {
                         fullName: form.guestShippingAddress.fullName,
                         phone: form.guestShippingAddress.phone,
@@ -285,26 +352,23 @@ export default function CheckoutPage() {
 
                 response = await OrderService.createGuestOrder(guestOrderRequest);
 
-                // Clear guest cart - handle gracefully even if it fails
+                // Clear guest cart
                 try {
                     const sessionId = getSessionId();
                     await CartService.clearGuestCart(sessionId);
                     localStorage.removeItem('guestSessionId');
                 } catch (cartError) {
                     console.warn('Cart clearing failed, but order was placed successfully');
-                    // Continue with order success even if cart clearing fails
                 }
             }
 
             if (response.success) {
-                // Show professional success message
                 const orderNumber = response.data.orderNumber;
                 const totalAmount = formatCurrency(getTotal());
                 const email = isAuthenticated ? user?.email : form.guestEmail;
 
                 setSuccess(`Order #${orderNumber} placed successfully! Total: ${totalAmount}. Confirmation sent to ${email}. Redirecting to order details...`);
 
-                // Redirect to order confirmation after a short delay
                 setTimeout(() => {
                     router.push(`/orders/${orderNumber}`);
                 }, 3000);
@@ -321,12 +385,30 @@ export default function CheckoutPage() {
     };
 
     const getSubtotal = () => cart?.totalAmount || 0;
+
     const getShippingAmount = () => {
         const subtotal = getSubtotal();
+
+        // Free shipping for orders above 1000
         if (subtotal > 1000) return 0;
-        return 60;
+
+        // Calculate based on location type
+        if (form.locationType === 'inside-dhaka') {
+            return 60;
+        } else {
+            return 120;
+        }
     };
+
     const getTotal = () => getSubtotal() + getShippingAmount();
+
+    const getDeliveryTime = () => {
+        if (form.locationType === 'inside-dhaka') {
+            return '1-2 business days';
+        } else {
+            return '3-5 business days';
+        }
+    };
 
     const hasOutOfStockItems = cart?.items.some(item => !item.inStock);
 
@@ -510,6 +592,73 @@ export default function CheckoutPage() {
                                         </div>
                                     )}
 
+                                    {/* Location Type Selection - FOR GUEST USERS */}
+                                    {!isAuthenticated && (
+                                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                            <h2 className="text-xl font-semibold text-gray-900 mb-4">Delivery Location</h2>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <label className={`flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                                    form.locationType === 'inside-dhaka'
+                                                        ? 'border-indigo-500 bg-indigo-50'
+                                                        : 'border-gray-200 hover:border-indigo-300'
+                                                }`}>
+                                                    <input
+                                                        type="radio"
+                                                        name="locationType"
+                                                        value="inside-dhaka"
+                                                        checked={form.locationType === 'inside-dhaka'}
+                                                        onChange={() => handleLocationTypeChange('inside-dhaka')}
+                                                        className="text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-gray-900">Inside Dhaka</p>
+                                                        <p className="text-gray-600 text-sm mt-1">
+                                                            Delivery: 1-2 days • Shipping: ৳60
+                                                        </p>
+                                                        <p className="text-green-600 text-xs mt-1">
+                                                            Free shipping on orders over ৳1000
+                                                        </p>
+                                                    </div>
+                                                </label>
+
+                                                <label className={`flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                                    form.locationType === 'outside-dhaka'
+                                                        ? 'border-indigo-500 bg-indigo-50'
+                                                        : 'border-gray-200 hover:border-indigo-300'
+                                                }`}>
+                                                    <input
+                                                        type="radio"
+                                                        name="locationType"
+                                                        value="outside-dhaka"
+                                                        checked={form.locationType === 'outside-dhaka'}
+                                                        onChange={() => handleLocationTypeChange('outside-dhaka')}
+                                                        className="text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-gray-900">Outside Dhaka</p>
+                                                        <p className="text-gray-600 text-sm mt-1">
+                                                            Delivery: 3-5 days • Shipping: ৳120
+                                                        </p>
+                                                        <p className="text-green-600 text-xs mt-1">
+                                                            Free shipping on orders over ৳1000
+                                                        </p>
+                                                    </div>
+                                                </label>
+                                            </div>
+
+                                            {form.locationType && (
+                                                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                    <p className="text-blue-700 text-sm">
+                                                        {form.locationType === 'inside-dhaka'
+                                                            ? '🚚 Fast delivery within Dhaka metropolitan area'
+                                                            : '📦 Standard delivery to other cities and districts'
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Shipping Address */}
                                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                                         <div className="flex items-center justify-between mb-4">
@@ -533,7 +682,7 @@ export default function CheckoutPage() {
                                                     <NewAddressForm
                                                         onSubmit={handleSaveNewAddress}
                                                         onCancel={() => setShowAddressForm(false)}
-                                                        popularAreas={popularAreas}
+                                                        popularAreas={getAreaOptions()}
                                                     />
                                                 </div>
                                             ) : (
@@ -554,9 +703,22 @@ export default function CheckoutPage() {
                                                                         <p className="font-medium text-gray-900">{address.fullName}</p>
                                                                         <p className="text-gray-600 text-sm mt-1">{address.fullAddress}</p>
                                                                         <p className="text-gray-600 text-sm">{address.phone}</p>
-                                                                        {address.isDefault && (
-                                                                            <span className="inline-block bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded mt-2">Default</span>
-                                                                        )}
+                                                                        <div className="flex items-center gap-2 mt-2">
+                                                                            {address.isInsideDhaka ? (
+                                                                                <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                                                                                    Inside Dhaka • ৳60
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                                                                    Outside Dhaka • ৳120
+                                                                                </span>
+                                                                            )}
+                                                                            {address.isDefault && (
+                                                                                <span className="inline-block bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded">
+                                                                                    Default
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </label>
                                                             ))}
@@ -576,7 +738,7 @@ export default function CheckoutPage() {
                                                 </div>
                                             )
                                         ) : (
-                                            // Guest user address form - WITH SINGLE PHONE
+                                            // Enhanced guest user address form with location-based fields
                                             <div className="grid grid-cols-1 gap-4">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div>
@@ -607,9 +769,28 @@ export default function CheckoutPage() {
                                                     </div>
                                                 </div>
 
+                                                {form.locationType === 'outside-dhaka' && (
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            City *
+                                                        </label>
+                                                        <select
+                                                            value={form.guestShippingAddress.city}
+                                                            onChange={(e) => handleCityChange(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                            required
+                                                        >
+                                                            <option value="Dhaka">Dhaka</option>
+                                                            {locationData?.otherCities.map(city => (
+                                                                <option key={city} value={city}>{city}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                )}
+
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Area *
+                                                        {form.locationType === 'inside-dhaka' ? 'Area in Dhaka *' : 'Area/Location *'}
                                                     </label>
                                                     <select
                                                         value={form.guestShippingAddress.area}
@@ -617,8 +798,8 @@ export default function CheckoutPage() {
                                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                                         required
                                                     >
-                                                        <option value="">Select Area</option>
-                                                        {popularAreas.map(area => (
+                                                        <option value="">Select {form.locationType === 'inside-dhaka' ? 'Area' : 'Location'}</option>
+                                                        {getAreaOptions().map(area => (
                                                             <option key={area} value={area}>{area}</option>
                                                         ))}
                                                     </select>
@@ -721,6 +902,25 @@ export default function CheckoutPage() {
                                                                 </div>
                                                             </div>
 
+                                                            {form.locationType === 'outside-dhaka' && (
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                        City *
+                                                                    </label>
+                                                                    <select
+                                                                        value={form.guestBillingAddress.city}
+                                                                        onChange={(e) => handleCityChange(e.target.value, 'billing')}
+                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                        required
+                                                                    >
+                                                                        <option value="Dhaka">Dhaka</option>
+                                                                        {locationData?.otherCities.map(city => (
+                                                                            <option key={city} value={city}>{city}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                            )}
+
                                                             <div>
                                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                                     Area *
@@ -732,7 +932,7 @@ export default function CheckoutPage() {
                                                                     required
                                                                 >
                                                                     <option value="">Select Area</option>
-                                                                    {popularAreas.map(area => (
+                                                                    {getAreaOptions().map(area => (
                                                                         <option key={area} value={area}>{area}</option>
                                                                     ))}
                                                                 </select>
@@ -868,35 +1068,60 @@ export default function CheckoutPage() {
                                                 <span className="text-gray-600">Subtotal</span>
                                                 <span className="font-medium">{formatCurrency(getSubtotal())}</span>
                                             </div>
+
                                             <div className="flex justify-between">
                                                 <span className="text-gray-600">Shipping</span>
                                                 <span className="font-medium">
-                                                    {getShippingAmount() === 0 ? 'FREE' : `${formatCurrency(getShippingAmount())}`}
+                                                    {getShippingAmount() === 0 ? (
+                                                        <span className="text-green-600">FREE</span>
+                                                    ) : (
+                                                        formatCurrency(getShippingAmount())
+                                                    )}
                                                 </span>
                                             </div>
+
+                                            {getShippingAmount() > 0 && form.locationType && (
+                                                <div className="text-xs text-gray-500 pl-2">
+                                                    {form.locationType === 'inside-dhaka'
+                                                        ? 'Inside Dhaka delivery'
+                                                        : 'Outside Dhaka delivery'
+                                                    } • {getDeliveryTime()}
+                                                </div>
+                                            )}
+
                                             {cart.totalDiscount > 0 && (
                                                 <div className="flex justify-between">
                                                     <span className="text-gray-600">Discount</span>
                                                     <span className="font-medium text-green-600">-{formatCurrency(cart.totalDiscount)}</span>
                                                 </div>
                                             )}
+
                                             <div className="flex justify-between border-t border-gray-200 pt-2">
                                                 <span className="font-semibold text-gray-900">Total</span>
                                                 <span className="font-bold text-lg text-gray-900">{formatCurrency(getTotal())}</span>
                                             </div>
                                         </div>
 
+                                        {/* Shipping Information */}
                                         <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                            <p className="text-green-700 text-sm">
-                                                {getShippingAmount() === 0 ? '🎉 Free shipping on orders over ৳1000' : '🚚 Standard delivery within 2-3 days'}
+                                            <p className="text-green-700 text-sm font-medium">
+                                                {getShippingAmount() === 0
+                                                    ? '🎉 Free shipping applied!'
+                                                    : `🚚 ${getDeliveryTime()} delivery`
+                                                }
                                             </p>
+                                            {getSubtotal() < 1000 && getShippingAmount() > 0 && (
+                                                <p className="text-green-600 text-xs mt-1">
+                                                    Add ৳{formatCurrency(1000 - getSubtotal())} more for free shipping
+                                                </p>
+                                            )}
                                         </div>
 
                                         <button
                                             type="submit"
                                             disabled={processing || hasOutOfStockItems ||
                                                 (isAuthenticated && !form.shippingAddressId) ||
-                                                (!isAuthenticated && !form.guestEmail)
+                                                (!isAuthenticated && (!form.guestEmail || !form.locationType))
                                             }
                                             className="w-full bg-indigo-600 text-white py-4 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors mt-6 flex items-center justify-center"
                                         >
@@ -949,7 +1174,7 @@ export default function CheckoutPage() {
     );
 }
 
-// New Address Form Component (unchanged)
+// Enhanced NewAddressForm Component with Location Selection
 function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
     onSubmit: (data: any) => void;
     onCancel: () => void;
@@ -962,8 +1187,19 @@ function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
         addressLine: '',
         city: 'Dhaka',
         landmark: '',
-        isDefault: false
+        isDefault: false,
+        addressZone: 'INSIDE_DHAKA',
+        isInsideDhaka: true
     });
+
+    const handleLocationChange = (isInsideDhaka: boolean) => {
+        setFormData(prev => ({
+            ...prev,
+            isInsideDhaka,
+            addressZone: isInsideDhaka ? 'INSIDE_DHAKA' : 'OUTSIDE_DHAKA',
+            city: isInsideDhaka ? 'Dhaka' : prev.city
+        }));
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -976,6 +1212,37 @@ function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Location Type Selection */}
+            <div>
+                <label className="block text-sm font-medium mb-2">Location Type *</label>
+                <div className="grid grid-cols-2 gap-4">
+                    <button
+                        type="button"
+                        onClick={() => handleLocationChange(true)}
+                        className={`p-3 border-2 rounded-lg text-center transition-all ${
+                            formData.isInsideDhaka
+                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                : 'border-gray-200 text-gray-700 hover:border-indigo-300'
+                        }`}
+                    >
+                        <div className="font-medium">Inside Dhaka</div>
+                        <div className="text-xs mt-1">1-2 days delivery • ৳60</div>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleLocationChange(false)}
+                        className={`p-3 border-2 rounded-lg text-center transition-all ${
+                            !formData.isInsideDhaka
+                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                : 'border-gray-200 text-gray-700 hover:border-indigo-300'
+                        }`}
+                    >
+                        <div className="font-medium">Outside Dhaka</div>
+                        <div className="text-xs mt-1">3-5 days delivery • ৳120</div>
+                    </button>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-medium mb-2">Full Name *</label>
@@ -1001,15 +1268,37 @@ function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
                 </div>
             </div>
 
+            {!formData.isInsideDhaka && (
+                <div>
+                    <label className="block text-sm font-medium mb-2">City *</label>
+                    <select
+                        value={formData.city}
+                        onChange={(e) => handleChange('city', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        required
+                    >
+                        <option value="Dhaka">Dhaka</option>
+                        <option value="Chittagong">Chittagong</option>
+                        <option value="Sylhet">Sylhet</option>
+                        <option value="Rajshahi">Rajshahi</option>
+                        <option value="Khulna">Khulna</option>
+                        <option value="Barisal">Barisal</option>
+                        <option value="Rangpur">Rangpur</option>
+                    </select>
+                </div>
+            )}
+
             <div>
-                <label className="block text-sm font-medium mb-2">Area *</label>
+                <label className="block text-sm font-medium mb-2">
+                    {formData.isInsideDhaka ? 'Area in Dhaka *' : 'Area/Location *'}
+                </label>
                 <select
                     value={formData.area}
                     onChange={(e) => handleChange('area', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     required
                 >
-                    <option value="">Select Area</option>
+                    <option value="">Select {formData.isInsideDhaka ? 'Area' : 'Location'}</option>
                     {popularAreas.map(area => (
                         <option key={area} value={area}>{area}</option>
                     ))}

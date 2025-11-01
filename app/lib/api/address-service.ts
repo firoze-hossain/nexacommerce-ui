@@ -1,6 +1,6 @@
 // app/lib/api/address-service.ts
-import { ApiService } from './api-service';
-import { Address, AddressRequest } from '@/app/lib/types/address';
+import {ApiService} from './api-service';
+import {Address, AddressRequest, LocationDataResponse} from '@/app/lib/types/address';
 
 const API_BASE_URL = 'http://localhost:8090/api/v1/nexa';
 
@@ -20,7 +20,11 @@ export class AddressService {
         return response;
     }
 
-    static async updateAddress(addressId: number, request: AddressRequest): Promise<{ success: boolean; message: string; data: Address }> {
+    static async updateAddress(addressId: number, request: AddressRequest): Promise<{
+        success: boolean;
+        message: string;
+        data: Address
+    }> {
         const response = await ApiService.put(`${API_BASE_URL}/addresses/${addressId}`, request);
         return response;
     }
@@ -35,7 +39,11 @@ export class AddressService {
         return response;
     }
 
-    static async getAddressesByType(addressType: string): Promise<{ success: boolean; message: string; data: Address[] }> {
+    static async getAddressesByType(addressType: string): Promise<{
+        success: boolean;
+        message: string;
+        data: Address[]
+    }> {
         const response = await ApiService.get(`${API_BASE_URL}/addresses/users/current/type/${addressType}`);
         return response;
     }
@@ -52,6 +60,11 @@ export class AddressService {
 
     static async getBangladeshCities(): Promise<{ success: boolean; message: string; data: string[] }> {
         const response = await ApiService.get(`${API_BASE_URL}/addresses/bangladesh/cities`);
+        return response;
+    }
+
+    static async getLocationData(): Promise<{ success: boolean; message: string; data: LocationDataResponse }> {
+        const response = await ApiService.get(`${API_BASE_URL}/addresses/bangladesh/location-data`);
         return response;
     }
 }
