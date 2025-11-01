@@ -36,6 +36,194 @@ interface CheckoutForm {
     };
 }
 
+// Enhanced NewAddressForm Component with Location Selection
+function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
+    onSubmit: (data: any) => void;
+    onCancel: () => void;
+    popularAreas: string[];
+}) {
+    const [formData, setFormData] = useState({
+        addressType: 'SHIPPING', // Fixed to SHIPPING only
+        fullName: '',
+        phone: '',
+        area: '',
+        addressLine: '',
+        city: 'Dhaka',
+        landmark: '',
+        isDefault: false,
+        addressZone: 'INSIDE_DHAKA',
+        isInsideDhaka: true
+    });
+
+    const handleLocationChange = (isInsideDhaka: boolean) => {
+        setFormData(prev => ({
+            ...prev,
+            isInsideDhaka,
+            addressZone: isInsideDhaka ? 'INSIDE_DHAKA' : 'OUTSIDE_DHAKA',
+            city: isInsideDhaka ? 'Dhaka' : prev.city
+        }));
+    };
+
+    const handleSubmit = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent event from bubbling
+        onSubmit(formData);
+    };
+
+    const handleChange = (field: string, value: string | boolean) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    return (
+        <div className="space-y-4 border-2 border-dashed border-gray-300 p-4 rounded-lg bg-gray-50">
+            <h3 className="text-lg font-semibold text-gray-900">Add New Address</h3>
+
+            {/* Location Type Selection */}
+            <div>
+                <label className="block text-sm font-medium mb-2">Location Type *</label>
+                <div className="grid grid-cols-2 gap-4">
+                    <button
+                        type="button"
+                        onClick={() => handleLocationChange(true)}
+                        className={`p-3 border-2 rounded-lg text-center transition-all ${
+                            formData.isInsideDhaka
+                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                : 'border-gray-200 text-gray-700 hover:border-indigo-300'
+                        }`}
+                    >
+                        <div className="font-medium">Inside Dhaka</div>
+                        <div className="text-xs mt-1">1-2 days delivery • ৳60</div>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleLocationChange(false)}
+                        className={`p-3 border-2 rounded-lg text-center transition-all ${
+                            !formData.isInsideDhaka
+                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                : 'border-gray-200 text-gray-700 hover:border-indigo-300'
+                        }`}
+                    >
+                        <div className="font-medium">Outside Dhaka</div>
+                        <div className="text-xs mt-1">3-5 days delivery • ৳120</div>
+                    </button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-medium mb-2">Full Name *</label>
+                    <input
+                        type="text"
+                        value={formData.fullName}
+                        onChange={(e) => handleChange('fullName', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        required
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-2">Phone Number *</label>
+                    <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleChange('phone', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="01XXXXXXXXX"
+                        required
+                    />
+                </div>
+            </div>
+
+            {!formData.isInsideDhaka && (
+                <div>
+                    <label className="block text-sm font-medium mb-2">City *</label>
+                    <select
+                        value={formData.city}
+                        onChange={(e) => handleChange('city', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        required
+                    >
+                        <option value="Dhaka">Dhaka</option>
+                        <option value="Chittagong">Chittagong</option>
+                        <option value="Sylhet">Sylhet</option>
+                        <option value="Rajshahi">Rajshahi</option>
+                        <option value="Khulna">Khulna</option>
+                        <option value="Barisal">Barisal</option>
+                        <option value="Rangpur">Rangpur</option>
+                    </select>
+                </div>
+            )}
+
+            <div>
+                <label className="block text-sm font-medium mb-2">
+                    {formData.isInsideDhaka ? 'Area in Dhaka *' : 'Area/Location *'}
+                </label>
+                <select
+                    value={formData.area}
+                    onChange={(e) => handleChange('area', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                >
+                    <option value="">Select {formData.isInsideDhaka ? 'Area' : 'Location'}</option>
+                    {popularAreas.map(area => (
+                        <option key={area} value={area}>{area}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium mb-2">Address Line *</label>
+                <textarea
+                    value={formData.addressLine}
+                    onChange={(e) => handleChange('addressLine', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="House #, Road #, Building Name, Floor, Flat No"
+                    rows={3}
+                    required
+                />
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium mb-2">Landmark (Optional)</label>
+                <input
+                    type="text"
+                    value={formData.landmark}
+                    onChange={(e) => handleChange('landmark', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Near mosque, school, market, etc."
+                />
+            </div>
+
+            <div className="flex items-center">
+                <input
+                    type="checkbox"
+                    checked={formData.isDefault}
+                    onChange={(e) => handleChange('isDefault', e.target.checked)}
+                    className="mr-2"
+                />
+                <label>Set as default address</label>
+            </div>
+
+            <div className="flex gap-3">
+                <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                    Save Address
+                </button>
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export default function CheckoutPage() {
     const { isAuthenticated, user } = useAuth();
     const [cart, setCart] = useState<CartResponse | null>(null);
@@ -48,6 +236,7 @@ export default function CheckoutPage() {
     const [success, setSuccess] = useState<string | null>(null);
     const [cartItemCount, setCartItemCount] = useState(0);
     const [showAddressForm, setShowAddressForm] = useState(false);
+    const [savingAddress, setSavingAddress] = useState(false);
     const router = useRouter();
 
     const [form, setForm] = useState<CheckoutForm>({
@@ -418,19 +607,46 @@ export default function CheckoutPage() {
 
     const handleSaveNewAddress = async (addressData: any) => {
         try {
+            setSavingAddress(true);
+            setError(null);
+
+            console.log('Creating address with data:', addressData);
+
             const response = await AddressService.createAddress({
                 ...addressData,
-                addressType: 'HOME',
                 isDefault: addresses.length === 0
             });
 
             if (response.success) {
+                // Add the new address to the local state immediately
+                const newAddress = response.data;
+                setAddresses(prev => [...prev, newAddress]);
+
+                // Auto-select the newly created address
+                setForm(prev => ({
+                    ...prev,
+                    shippingAddressId: newAddress.id,
+                    billingAddressId: newAddress.id
+                }));
+
+                // Hide the address form
                 setShowAddressForm(false);
-                loadCheckoutData();
+
+                // Show success message
+                setSuccess('Address created successfully!');
+
+                // Clear success message after 3 seconds
+                setTimeout(() => {
+                    setSuccess(null);
+                }, 3000);
+            } else {
+                setError(response.message || 'Failed to create address');
             }
         } catch (error) {
             console.error('Error saving address:', error);
-            setError('Failed to save address');
+            setError('Failed to save address. Please try again.');
+        } finally {
+            setSavingAddress(false);
         }
     };
 
@@ -529,16 +745,9 @@ export default function CheckoutPage() {
                                     </svg>
                                 </div>
                                 <div className="ml-3 flex-1">
-                                    <h3 className="text-green-800 font-semibold text-lg">Order Placed Successfully!</h3>
+                                    <h3 className="text-green-800 font-semibold text-lg">Success!</h3>
                                     <div className="mt-2 text-green-700">
                                         <p className="text-sm">{success}</p>
-                                    </div>
-                                    <div className="mt-4 flex items-center text-sm text-green-600">
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Redirecting to order details...
                                     </div>
                                 </div>
                             </div>
@@ -678,13 +887,11 @@ export default function CheckoutPage() {
 
                                         {isAuthenticated ? (
                                             showAddressForm ? (
-                                                <div className="space-y-4">
-                                                    <NewAddressForm
-                                                        onSubmit={handleSaveNewAddress}
-                                                        onCancel={() => setShowAddressForm(false)}
-                                                        popularAreas={getAreaOptions()}
-                                                    />
-                                                </div>
+                                                <NewAddressForm
+                                                    onSubmit={handleSaveNewAddress}
+                                                    onCancel={() => setShowAddressForm(false)}
+                                                    popularAreas={getAreaOptions()}
+                                                />
                                             ) : (
                                                 <div className="space-y-4">
                                                     {addresses.length > 0 ? (
@@ -1119,7 +1326,7 @@ export default function CheckoutPage() {
 
                                         <button
                                             type="submit"
-                                            disabled={processing || hasOutOfStockItems ||
+                                            disabled={processing || savingAddress || hasOutOfStockItems ||
                                                 (isAuthenticated && !form.shippingAddressId) ||
                                                 (!isAuthenticated && (!form.guestEmail || !form.locationType))
                                             }
@@ -1171,188 +1378,5 @@ export default function CheckoutPage() {
 
             <Footer />
         </div>
-    );
-}
-
-// Enhanced NewAddressForm Component with Location Selection
-function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
-    onSubmit: (data: any) => void;
-    onCancel: () => void;
-    popularAreas: string[];
-}) {
-    const [formData, setFormData] = useState({
-        fullName: '',
-        phone: '',
-        area: '',
-        addressLine: '',
-        city: 'Dhaka',
-        landmark: '',
-        isDefault: false,
-        addressZone: 'INSIDE_DHAKA',
-        isInsideDhaka: true
-    });
-
-    const handleLocationChange = (isInsideDhaka: boolean) => {
-        setFormData(prev => ({
-            ...prev,
-            isInsideDhaka,
-            addressZone: isInsideDhaka ? 'INSIDE_DHAKA' : 'OUTSIDE_DHAKA',
-            city: isInsideDhaka ? 'Dhaka' : prev.city
-        }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSubmit(formData);
-    };
-
-    const handleChange = (field: string, value: string | boolean) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Location Type Selection */}
-            <div>
-                <label className="block text-sm font-medium mb-2">Location Type *</label>
-                <div className="grid grid-cols-2 gap-4">
-                    <button
-                        type="button"
-                        onClick={() => handleLocationChange(true)}
-                        className={`p-3 border-2 rounded-lg text-center transition-all ${
-                            formData.isInsideDhaka
-                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                                : 'border-gray-200 text-gray-700 hover:border-indigo-300'
-                        }`}
-                    >
-                        <div className="font-medium">Inside Dhaka</div>
-                        <div className="text-xs mt-1">1-2 days delivery • ৳60</div>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => handleLocationChange(false)}
-                        className={`p-3 border-2 rounded-lg text-center transition-all ${
-                            !formData.isInsideDhaka
-                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                                : 'border-gray-200 text-gray-700 hover:border-indigo-300'
-                        }`}
-                    >
-                        <div className="font-medium">Outside Dhaka</div>
-                        <div className="text-xs mt-1">3-5 days delivery • ৳120</div>
-                    </button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium mb-2">Full Name *</label>
-                    <input
-                        type="text"
-                        value={formData.fullName}
-                        onChange={(e) => handleChange('fullName', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        required
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-2">Phone Number *</label>
-                    <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => handleChange('phone', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="01XXXXXXXXX"
-                        required
-                    />
-                </div>
-            </div>
-
-            {!formData.isInsideDhaka && (
-                <div>
-                    <label className="block text-sm font-medium mb-2">City *</label>
-                    <select
-                        value={formData.city}
-                        onChange={(e) => handleChange('city', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        required
-                    >
-                        <option value="Dhaka">Dhaka</option>
-                        <option value="Chittagong">Chittagong</option>
-                        <option value="Sylhet">Sylhet</option>
-                        <option value="Rajshahi">Rajshahi</option>
-                        <option value="Khulna">Khulna</option>
-                        <option value="Barisal">Barisal</option>
-                        <option value="Rangpur">Rangpur</option>
-                    </select>
-                </div>
-            )}
-
-            <div>
-                <label className="block text-sm font-medium mb-2">
-                    {formData.isInsideDhaka ? 'Area in Dhaka *' : 'Area/Location *'}
-                </label>
-                <select
-                    value={formData.area}
-                    onChange={(e) => handleChange('area', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                >
-                    <option value="">Select {formData.isInsideDhaka ? 'Area' : 'Location'}</option>
-                    {popularAreas.map(area => (
-                        <option key={area} value={area}>{area}</option>
-                    ))}
-                </select>
-            </div>
-
-            <div>
-                <label className="block text-sm font-medium mb-2">Address Line *</label>
-                <textarea
-                    value={formData.addressLine}
-                    onChange={(e) => handleChange('addressLine', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="House #, Road #, Building Name, Floor, Flat No"
-                    rows={3}
-                    required
-                />
-            </div>
-
-            <div>
-                <label className="block text-sm font-medium mb-2">Landmark (Optional)</label>
-                <input
-                    type="text"
-                    value={formData.landmark}
-                    onChange={(e) => handleChange('landmark', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Near mosque, school, market, etc."
-                />
-            </div>
-
-            <div className="flex items-center">
-                <input
-                    type="checkbox"
-                    checked={formData.isDefault}
-                    onChange={(e) => handleChange('isDefault', e.target.checked)}
-                    className="mr-2"
-                />
-                <label>Set as default address</label>
-            </div>
-
-            <div className="flex gap-3">
-                <button
-                    type="submit"
-                    className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                    Save Address
-                </button>
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                    Cancel
-                </button>
-            </div>
-        </form>
     );
 }

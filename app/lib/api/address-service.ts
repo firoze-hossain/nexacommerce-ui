@@ -15,9 +15,31 @@ export class AddressService {
         return response;
     }
 
+    // static async createAddress(request: AddressRequest): Promise<{ success: boolean; message: string; data: Address }> {
+    //     const response = await ApiService.post(`${API_BASE_URL}/addresses/users/current`, request);
+    //     return response;
+    // }
+    // static async createAddress(request: AddressRequest): Promise<{ success: boolean; message: string; data: Address }> {
+    //     console.log('Creating address with data:', request);
+    //
+    //     const response = await ApiService.post(`${API_BASE_URL}/addresses/users/current`, request);
+    //
+    //     console.log('Address creation response:', response);
+    //     return response;
+    // }
     static async createAddress(request: AddressRequest): Promise<{ success: boolean; message: string; data: Address }> {
-        const response = await ApiService.post(`${API_BASE_URL}/addresses/users/current`, request);
-        return response;
+        console.log('=== ADDRESS CREATION DEBUG ===');
+        console.log('Request payload:', JSON.stringify(request, null, 2));
+        console.log('API URL:', `${API_BASE_URL}/addresses/users/current`);
+
+        try {
+            const response = await ApiService.post(`${API_BASE_URL}/addresses/users/current`, request);
+            console.log('Response:', response);
+            return response;
+        } catch (error) {
+            console.error('Error details:', error);
+            throw error;
+        }
     }
 
     static async updateAddress(addressId: number, request: AddressRequest): Promise<{
