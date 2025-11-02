@@ -92,6 +92,10 @@ export default function OrderDetailPage() {
         }
     };
 
+    // Safe access to order items
+    const orderItems = order?.items || [];
+    const orderHistory = order?.history || [];
+
     if (!isAuthenticated) {
         return (
             <div className="min-h-screen bg-gray-50">
@@ -163,12 +167,12 @@ export default function OrderDetailPage() {
                         <p className="text-gray-600 mt-2">Placed on {formatDate(order.createdAt)}</p>
                     </div>
                     <div className="mt-4 lg:mt-0 flex items-center space-x-4">
-            <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-              {order.status.replace('_', ' ')}
-            </span>
+                        <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                            {order.status.replace('_', ' ')}
+                        </span>
                         <span className={`px-4 py-2 rounded-full text-sm font-medium ${getPaymentStatusColor(order.paymentStatus)}`}>
-              {order.paymentStatus.replace('_', ' ')}
-            </span>
+                            {order.paymentStatus.replace('_', ' ')}
+                        </span>
                     </div>
                 </div>
 
@@ -179,44 +183,51 @@ export default function OrderDetailPage() {
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Items</h2>
                             <div className="space-y-6">
-                                {order.items.map((item) => (
-                                    <div key={item.id} className="flex items-center space-x-4 pb-6 border-b border-gray-200 last:border-0 last:pb-0">
-                                        <img
-                                            src={item.productImage || '/api/placeholder/100/100'}
-                                            alt={item.productName}
-                                            className="w-20 h-20 object-cover rounded-lg"
-                                        />
-                                        <div className="flex-1">
-                                            <h3 className="font-semibold text-gray-900">{item.productName}</h3>
-                                            <p className="text-gray-600 text-sm mt-1">SKU: {item.productSku}</p>
-                                            <p className="text-gray-600 text-sm">Quantity: {item.quantity}</p>
-                                            {item.discountAmount > 0 && (
-                                                <p className="text-green-600 text-sm mt-1">
-                                                    You saved {formatCurrency(item.discountAmount)}
+                                {orderItems.length > 0 ? (
+                                    orderItems.map((item) => (
+                                        <div key={item.id} className="flex items-center space-x-4 pb-6 border-b border-gray-200 last:border-0 last:pb-0">
+                                            <img
+                                                src={item.productImage || '/api/placeholder/100/100'}
+                                                alt={item.productName}
+                                                className="w-20 h-20 object-cover rounded-lg"
+                                            />
+                                            <div className="flex-1">
+                                                <h3 className="font-semibold text-gray-900">{item.productName}</h3>
+                                                <p className="text-gray-600 text-sm mt-1">SKU: {item.productSku}</p>
+                                                <p className="text-gray-600 text-sm">Quantity: {item.quantity}</p>
+                                                {item.discountAmount > 0 && (
+                                                    <p className="text-green-600 text-sm mt-1">
+                                                        You saved {formatCurrency(item.discountAmount)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-semibold text-gray-900 text-lg">
+                                                    {formatCurrency(item.subtotal)}
                                                 </p>
-                                            )}
+                                                {item.compareAtPrice && item.compareAtPrice > item.price && (
+                                                    <p className="text-gray-500 text-sm line-through">
+                                                        {formatCurrency(item.compareAtPrice * item.quantity)}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-semibold text-gray-900 text-lg">
-                                                {formatCurrency(item.subtotal)}
-                                            </p>
-                                            {item.compareAtPrice && item.compareAtPrice > item.price && (
-                                                <p className="text-gray-500 text-sm line-through">
-                                                    {formatCurrency(item.compareAtPrice * item.quantity)}
-                                                </p>
-                                            )}
-                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <div className="text-6xl mb-4">📦</div>
+                                        <p className="text-gray-600">No items found in this order.</p>
                                     </div>
-                                ))}
+                                )}
                             </div>
                         </div>
 
                         {/* Order History */}
-                        {order.history && order.history.length > 0 && (
+                        {orderHistory.length > 0 && (
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Order History</h2>
                                 <div className="space-y-4">
-                                    {order.history.map((history, index) => (
+                                    {orderHistory.map((history) => (
                                         <div key={history.id} className="flex items-start space-x-4">
                                             <div className="flex-shrink-0 w-2 h-2 bg-indigo-600 rounded-full mt-2"></div>
                                             <div className="flex-1">
@@ -280,16 +291,21 @@ export default function OrderDetailPage() {
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <h2 className="text-xl font-semibold text-gray-900 mb-4">Shipping Address</h2>
                             <div className="text-gray-600">
-                                <p className="font-medium">{order.shippingAddress?.fullName}</p>
-                                <p className="mt-1">{order.shippingAddress?.addressLine1}</p>
-                                {order.shippingAddress?.addressLine2 && (
-                                    <p>{order.shippingAddress.addressLine2}</p>
+                                {order.shippingAddress ? (
+                                    <>
+                                        <p className="font-medium">{order.shippingAddress.fullName}</p>
+                                        <p className="mt-1">{order.shippingAddress.addressLine}</p>
+                                        <p>
+                                            {order.shippingAddress.area}, {order.shippingAddress.city}
+                                        </p>
+                                        {order.shippingAddress.landmark && (
+                                            <p>Landmark: {order.shippingAddress.landmark}</p>
+                                        )}
+                                        <p className="mt-2">{order.shippingAddress.phone}</p>
+                                    </>
+                                ) : (
+                                    <p className="text-gray-500">No shipping address provided</p>
                                 )}
-                                <p>
-                                    {order.shippingAddress?.city}, {order.shippingAddress?.state} {order.shippingAddress?.postalCode}
-                                </p>
-                                <p>{order.shippingAddress?.country}</p>
-                                <p className="mt-2">{order.shippingAddress?.phone}</p>
                             </div>
                         </div>
 
@@ -297,18 +313,31 @@ export default function OrderDetailPage() {
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <h2 className="text-xl font-semibold text-gray-900 mb-4">Billing Address</h2>
                             <div className="text-gray-600">
-                                <p className="font-medium">{order.billingAddress?.fullName}</p>
-                                <p className="mt-1">{order.billingAddress?.addressLine1}</p>
-                                {order.billingAddress?.addressLine2 && (
-                                    <p>{order.billingAddress.addressLine2}</p>
+                                {order.billingAddress ? (
+                                    <>
+                                        <p className="font-medium">{order.billingAddress.fullName}</p>
+                                        <p className="mt-1">{order.billingAddress.addressLine}</p>
+                                        <p>
+                                            {order.billingAddress.area}, {order.billingAddress.city}
+                                        </p>
+                                        {order.billingAddress.landmark && (
+                                            <p>Landmark: {order.billingAddress.landmark}</p>
+                                        )}
+                                        <p className="mt-2">{order.billingAddress.phone}</p>
+                                    </>
+                                ) : (
+                                    <p className="text-gray-500">Same as shipping address</p>
                                 )}
-                                <p>
-                                    {order.billingAddress?.city}, {order.billingAddress?.state} {order.billingAddress?.postalCode}
-                                </p>
-                                <p>{order.billingAddress?.country}</p>
-                                <p className="mt-2">{order.billingAddress?.phone}</p>
                             </div>
                         </div>
+
+                        {/* Customer Notes */}
+                        {order.customerNotes && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                <h2 className="text-xl font-semibold text-gray-900 mb-4">Customer Notes</h2>
+                                <p className="text-gray-600">{order.customerNotes}</p>
+                            </div>
+                        )}
 
                         {/* Order Actions */}
                         {(order.status === 'PENDING' || order.status === 'CONFIRMED') && (

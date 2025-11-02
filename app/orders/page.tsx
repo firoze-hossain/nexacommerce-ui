@@ -75,6 +75,16 @@ export default function OrdersPage() {
         }
     };
 
+    // Helper function to safely get order items count
+    const getOrderItemsCount = (order: OrderResponse) => {
+        return order.items?.length || 0;
+    };
+
+    // Helper function to safely get order items
+    const getOrderItems = (order: OrderResponse) => {
+        return order.items || [];
+    };
+
     if (!isAuthenticated) {
         return (
             <div className="min-h-screen bg-gray-50">
@@ -134,107 +144,124 @@ export default function OrdersPage() {
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        {orders.map((order) => (
-                            <div
-                                key={order.id}
-                                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-                            >
-                                {/* Order Header */}
-                                <div className="border-b border-gray-200 p-6">
-                                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                                        <div>
-                                            <div className="flex items-center space-x-4 mb-2">
-                                                <h3 className="text-lg font-semibold text-gray-900">
-                                                    Order #{order.orderNumber}
-                                                </h3>
-                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                          {order.status.replace('_', ' ')}
-                        </span>
-                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.paymentStatus)}`}>
-                          {order.paymentStatus.replace('_', ' ')}
-                        </span>
-                                            </div>
-                                            <p className="text-gray-600 text-sm">
-                                                Placed on {formatDate(order.createdAt)}
-                                            </p>
-                                        </div>
-                                        <div className="mt-4 lg:mt-0 text-right">
-                                            <p className="text-2xl font-bold text-gray-900">
-                                                {formatCurrency(order.finalAmount)}
-                                            </p>
-                                            <p className="text-gray-600 text-sm">
-                                                {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                        {orders.map((order) => {
+                            const orderItems = getOrderItems(order);
+                            const itemsCount = getOrderItemsCount(order);
 
-                                {/* Order Items */}
-                                <div className="p-6">
-                                    <div className="space-y-4">
-                                        {order.items.slice(0, 3).map((item, index) => (
-                                            <div key={item.id} className="flex items-center space-x-4">
-                                                <img
-                                                    src={item.productImage || '/api/placeholder/80/80'}
-                                                    alt={item.productName}
-                                                    className="w-16 h-16 object-cover rounded-lg"
-                                                />
-                                                <div className="flex-1">
-                                                    <h4 className="font-medium text-gray-900">{item.productName}</h4>
-                                                    <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
-                                                    <p className="text-gray-600 text-sm">SKU: {item.productSku}</p>
+                            return (
+                                <div
+                                    key={order.id}
+                                    className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+                                >
+                                    {/* Order Header */}
+                                    <div className="border-b border-gray-200 p-6">
+                                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                                            <div>
+                                                <div className="flex items-center space-x-4 mb-2">
+                                                    <h3 className="text-lg font-semibold text-gray-900">
+                                                        Order #{order.orderNumber}
+                                                    </h3>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                                                        {order.status.replace('_', ' ')}
+                                                    </span>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.paymentStatus)}`}>
+                                                        {order.paymentStatus.replace('_', ' ')}
+                                                    </span>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="font-semibold text-gray-900">
-                                                        {formatCurrency(item.subtotal)}
-                                                    </p>
-                                                    {item.discountAmount > 0 && (
-                                                        <p className="text-green-600 text-sm">
-                                                            Save {formatCurrency(item.discountAmount)}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        {order.items.length > 3 && (
-                                            <div className="text-center pt-2">
                                                 <p className="text-gray-600 text-sm">
-                                                    + {order.items.length - 3} more item{order.items.length - 3 !== 1 ? 's' : ''}
+                                                    Placed on {formatDate(order.createdAt)}
                                                 </p>
                                             </div>
-                                        )}
+                                            <div className="mt-4 lg:mt-0 text-right">
+                                                <p className="text-2xl font-bold text-gray-900">
+                                                    {formatCurrency(order.finalAmount)}
+                                                </p>
+                                                <p className="text-gray-600 text-sm">
+                                                    {itemsCount} item{itemsCount !== 1 ? 's' : ''}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {/* Order Actions */}
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 pt-6 border-t border-gray-200">
-                                        <div className="mb-4 sm:mb-0">
-                                            <p className="text-sm text-gray-600">
-                                                Shipped to: {order.shippingAddress?.city}, {order.shippingAddress?.state}
-                                            </p>
+                                    {/* Order Items */}
+                                    <div className="p-6">
+                                        <div className="space-y-4">
+                                            {orderItems.length > 0 ? (
+                                                <>
+                                                    {orderItems.slice(0, 3).map((item) => (
+                                                        <div key={item.id} className="flex items-center space-x-4">
+                                                            <img
+                                                                src={item.productImage || '/api/placeholder/80/80'}
+                                                                alt={item.productName}
+                                                                className="w-16 h-16 object-cover rounded-lg"
+                                                            />
+                                                            <div className="flex-1">
+                                                                <h4 className="font-medium text-gray-900">{item.productName}</h4>
+                                                                <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
+                                                                <p className="text-gray-600 text-sm">SKU: {item.productSku}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="font-semibold text-gray-900">
+                                                                    {formatCurrency(item.subtotal)}
+                                                                </p>
+                                                                {item.discountAmount > 0 && (
+                                                                    <p className="text-green-600 text-sm">
+                                                                        Save {formatCurrency(item.discountAmount)}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+
+                                                    {orderItems.length > 3 && (
+                                                        <div className="text-center pt-2">
+                                                            <p className="text-gray-600 text-sm">
+                                                                + {orderItems.length - 3} more item{orderItems.length - 3 !== 1 ? 's' : ''}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="text-center py-4">
+                                                    <p className="text-gray-500">No items found in this order</p>
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="flex space-x-3">
-                                            <Link
-                                                href={`/orders/${order.orderNumber}`}
-                                                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-                                            >
-                                                View Details
-                                            </Link>
-                                            {order.status === 'PENDING' && (
-                                                <button className="border border-red-300 text-red-600 px-6 py-2 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
-                                                    Cancel Order
-                                                </button>
-                                            )}
-                                            {order.status === 'DELIVERED' && (
-                                                <button className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
-                                                    Request Return
-                                                </button>
-                                            )}
+
+                                        {/* Order Actions */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 pt-6 border-t border-gray-200">
+                                            <div className="mb-4 sm:mb-0">
+                                                <p className="text-sm text-gray-600">
+                                                    {order.shippingAddress ? (
+                                                        `Shipped to: ${order.shippingAddress.city}, ${order.shippingAddress.area}`
+                                                    ) : (
+                                                        'Shipping address not available'
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <div className="flex space-x-3">
+                                                <Link
+                                                    href={`/orders/${order.orderNumber}`}
+                                                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                                                >
+                                                    View Details
+                                                </Link>
+                                                {order.status === 'PENDING' && (
+                                                    <button className="border border-red-300 text-red-600 px-6 py-2 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
+                                                        Cancel Order
+                                                    </button>
+                                                )}
+                                                {order.status === 'DELIVERED' && (
+                                                    <button className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                                                        Request Return
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </main>
