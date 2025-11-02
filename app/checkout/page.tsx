@@ -37,22 +37,23 @@ interface CheckoutForm {
 }
 
 // Enhanced NewAddressForm Component with Location Selection
-function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
+function NewAddressForm({ onSubmit, onCancel, popularAreas, editingAddress = null }: {
     onSubmit: (data: any) => void;
     onCancel: () => void;
     popularAreas: string[];
+    editingAddress?: Address | null;
 }) {
     const [formData, setFormData] = useState({
-        addressType: 'SHIPPING', // Fixed to SHIPPING only
-        fullName: '',
-        phone: '',
-        area: '',
-        addressLine: '',
-        city: 'Dhaka',
-        landmark: '',
-        isDefault: false,
-        addressZone: 'INSIDE_DHAKA',
-        isInsideDhaka: true
+        addressType: editingAddress?.addressType || 'SHIPPING',
+        fullName: editingAddress?.fullName || '',
+        phone: editingAddress?.phone || '',
+        area: editingAddress?.area || '',
+        addressLine: editingAddress?.addressLine || '',
+        city: editingAddress?.city || 'Dhaka',
+        landmark: editingAddress?.landmark || '',
+        isDefault: editingAddress?.isDefault || false,
+        addressZone: editingAddress?.addressZone || 'INSIDE_DHAKA',
+        isInsideDhaka: editingAddress?.isInsideDhaka ?? true
     });
 
     const handleLocationChange = (isInsideDhaka: boolean) => {
@@ -76,7 +77,9 @@ function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
 
     return (
         <div className="space-y-4 border-2 border-dashed border-gray-300 p-4 rounded-lg bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-900">Add New Address</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+                {editingAddress ? 'Edit Address' : 'Add New Address'}
+            </h3>
 
             {/* Location Type Selection */}
             <div>
@@ -210,7 +213,7 @@ function NewAddressForm({ onSubmit, onCancel, popularAreas }: {
                     onClick={handleSubmit}
                     className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors"
                 >
-                    Save Address
+                    {editingAddress ? 'Update Address' : 'Save Address'}
                 </button>
                 <button
                     type="button"
@@ -237,6 +240,7 @@ export default function CheckoutPage() {
     const [cartItemCount, setCartItemCount] = useState(0);
     const [showAddressForm, setShowAddressForm] = useState(false);
     const [savingAddress, setSavingAddress] = useState(false);
+    const [editingAddress, setEditingAddress] = useState<Address | null>(null);
     const router = useRouter();
 
     const [form, setForm] = useState<CheckoutForm>({
@@ -602,6 +606,7 @@ export default function CheckoutPage() {
     const hasOutOfStockItems = cart?.items.some(item => !item.inStock);
 
     const handleAddNewAddress = () => {
+        setEditingAddress(null);
         setShowAddressForm(true);
     };
 
@@ -610,43 +615,106 @@ export default function CheckoutPage() {
             setSavingAddress(true);
             setError(null);
 
-            console.log('Creating address with data:', addressData);
+            console.log('Creating/Updating address with data:', addressData);
 
-            const response = await AddressService.createAddress({
-                ...addressData,
-                isDefault: addresses.length === 0
-            });
+            let response;
+
+            if (editingAddress) {
+                // Update existing address
+                response = await AddressService.updateAddress(editingAddress.id, {
+                    ...addressData,
+                    isDefault: addressData.isDefault || false
+                });
+            } else {
+                // Create new address
+                response = await AddressService.createAddress({
+                    ...addressData,
+                    isDefault: addresses.length === 0 || addressData.isDefault
+                });
+            }
 
             if (response.success) {
-                // Add the new address to the local state immediately
-                const newAddress = response.data;
-                setAddresses(prev => [...prev, newAddress]);
+                const updatedAddress = response.data;
 
-                // Auto-select the newly created address
+                if (editingAddress) {
+                    // Update existing address in the list
+                    setAddresses(prev =>
+                        prev.map(addr => addr.id === editingAddress.id ? updatedAddress : addr)
+                    );
+                } else {
+                    // Add new address to the list
+                    setAddresses(prev => [...prev, updatedAddress]);
+                }
+
+                // Auto-select the newly created/updated address
                 setForm(prev => ({
                     ...prev,
-                    shippingAddressId: newAddress.id,
-                    billingAddressId: newAddress.id
+                    shippingAddressId: updatedAddress.id,
+                    billingAddressId: updatedAddress.id
                 }));
 
-                // Hide the address form
+                // Reset form states
                 setShowAddressForm(false);
+                setEditingAddress(null);
 
                 // Show success message
-                setSuccess('Address created successfully!');
+                setSuccess(editingAddress ? 'Address updated successfully!' : 'Address created successfully!');
 
                 // Clear success message after 3 seconds
                 setTimeout(() => {
                     setSuccess(null);
                 }, 3000);
             } else {
-                setError(response.message || 'Failed to create address');
+                setError(response.message || 'Failed to save address');
             }
         } catch (error) {
             console.error('Error saving address:', error);
             setError('Failed to save address. Please try again.');
         } finally {
             setSavingAddress(false);
+        }
+    };
+
+    const handleEditAddress = (address: Address) => {
+        setEditingAddress(address);
+        setShowAddressForm(true);
+    };
+
+    const handleCancelEdit = () => {
+        setShowAddressForm(false);
+        setEditingAddress(null);
+    };
+
+    const handleDeleteAddress = async (addressId: number) => {
+        if (!confirm('Are you sure you want to delete this address?')) {
+            return;
+        }
+
+        try {
+            setError(null);
+            const response = await AddressService.deleteAddress(addressId);
+
+            if (response.success) {
+                // Remove address from local state
+                setAddresses(prev => prev.filter(addr => addr.id !== addressId));
+
+                // If the deleted address was selected, clear the selection
+                if (form.shippingAddressId === addressId) {
+                    setForm(prev => ({
+                        ...prev,
+                        shippingAddressId: 0,
+                        billingAddressId: prev.useShippingAsBilling ? 0 : prev.billingAddressId
+                    }));
+                }
+
+                setSuccess('Address deleted successfully!');
+                setTimeout(() => setSuccess(null), 3000);
+            } else {
+                setError(response.message || 'Failed to delete address');
+            }
+        } catch (error) {
+            console.error('Error deleting address:', error);
+            setError('Failed to delete address. Please try again.');
         }
     };
 
@@ -874,7 +942,7 @@ export default function CheckoutPage() {
                                             <h2 className="text-xl font-semibold text-gray-900">
                                                 Shipping Address
                                             </h2>
-                                            {isAuthenticated && !showAddressForm && (
+                                            {isAuthenticated && !showAddressForm && addresses.length > 0 && (
                                                 <button
                                                     type="button"
                                                     onClick={handleAddNewAddress}
@@ -889,27 +957,52 @@ export default function CheckoutPage() {
                                             showAddressForm ? (
                                                 <NewAddressForm
                                                     onSubmit={handleSaveNewAddress}
-                                                    onCancel={() => setShowAddressForm(false)}
+                                                    onCancel={handleCancelEdit}
                                                     popularAreas={getAreaOptions()}
+                                                    editingAddress={editingAddress}
                                                 />
                                             ) : (
                                                 <div className="space-y-4">
                                                     {addresses.length > 0 ? (
                                                         <div className="grid gap-4">
                                                             {addresses.map(address => (
-                                                                <label key={address.id} className="flex items-start space-x-3 p-4 border border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer">
+                                                                <div key={address.id} className="flex items-start space-x-3 p-4 border border-gray-200 rounded-lg hover:border-indigo-300">
                                                                     <input
                                                                         type="radio"
                                                                         name="shippingAddress"
                                                                         value={address.id}
                                                                         checked={form.shippingAddressId === address.id}
-                                                                        onChange={(e) => setForm(prev => ({ ...prev, shippingAddressId: Number(e.target.value) }))}
+                                                                        onChange={(e) => setForm(prev => ({
+                                                                            ...prev,
+                                                                            shippingAddressId: Number(e.target.value),
+                                                                            billingAddressId: prev.useShippingAsBilling ? Number(e.target.value) : prev.billingAddressId
+                                                                        }))}
                                                                         className="mt-1 text-indigo-600 focus:ring-indigo-500"
                                                                     />
                                                                     <div className="flex-1">
-                                                                        <p className="font-medium text-gray-900">{address.fullName}</p>
-                                                                        <p className="text-gray-600 text-sm mt-1">{address.fullAddress}</p>
-                                                                        <p className="text-gray-600 text-sm">{address.phone}</p>
+                                                                        <div className="flex items-start justify-between">
+                                                                            <div>
+                                                                                <p className="font-medium text-gray-900">{address.fullName}</p>
+                                                                                <p className="text-gray-600 text-sm mt-1">{address.fullAddress}</p>
+                                                                                <p className="text-gray-600 text-sm">{address.phone}</p>
+                                                                            </div>
+                                                                            <div className="flex gap-2">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleEditAddress(address)}
+                                                                                    className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                                                                                >
+                                                                                    Edit
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleDeleteAddress(address.id)}
+                                                                                    className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                                                                >
+                                                                                    Delete
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
                                                                         <div className="flex items-center gap-2 mt-2">
                                                                             {address.isInsideDhaka ? (
                                                                                 <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
@@ -927,20 +1020,30 @@ export default function CheckoutPage() {
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                </label>
+                                                                </div>
                                                             ))}
                                                         </div>
                                                     ) : (
-                                                        <div className="text-center py-8">
-                                                            <p className="text-gray-600 mb-4">No addresses found</p>
-                                                            <button
-                                                                type="button"
-                                                                onClick={handleAddNewAddress}
-                                                                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                                                            >
-                                                                Add Your First Address
-                                                            </button>
-                                                        </div>
+                                                        // Show address form directly when no addresses exist
+                                                        <NewAddressForm
+                                                            onSubmit={handleSaveNewAddress}
+                                                            onCancel={() => {}} // No cancel when no addresses exist
+                                                            popularAreas={getAreaOptions()}
+                                                        />
+                                                    )}
+
+                                                    {/* Show "Add New Address" button only when addresses exist */}
+                                                    {addresses.length > 0 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleAddNewAddress}
+                                                            className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                                                        >
+                                                            <div className="flex items-center justify-center space-x-2">
+                                                                <span className="text-indigo-600">+</span>
+                                                                <span className="text-indigo-600 font-medium">Add New Address</span>
+                                                            </div>
+                                                        </button>
                                                     )}
                                                 </div>
                                             )

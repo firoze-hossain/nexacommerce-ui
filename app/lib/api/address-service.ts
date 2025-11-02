@@ -42,18 +42,48 @@ export class AddressService {
         }
     }
 
-    static async updateAddress(addressId: number, request: AddressRequest): Promise<{
-        success: boolean;
-        message: string;
-        data: Address
-    }> {
-        const response = await ApiService.put(`${API_BASE_URL}/addresses/${addressId}`, request);
-        return response;
+    // static async updateAddress(addressId: number, request: AddressRequest): Promise<{
+    //     success: boolean;
+    //     message: string;
+    //     data: Address
+    // }> {
+    //     const response = await ApiService.put(`${API_BASE_URL}/addresses/${addressId}`, request);
+    //     return response;
+    // }
+    //
+    // static async deleteAddress(addressId: number): Promise<{ success: boolean; message: string }> {
+    //     const response = await ApiService.delete(`${API_BASE_URL}/addresses/${addressId}`);
+    //     return response;
+    // }
+    static async updateAddress(addressId: number, request: AddressRequest): Promise<{ success: boolean; message: string; data: Address }> {
+        console.log('=== ADDRESS UPDATE DEBUG ===');
+        console.log('Update request for address ID:', addressId);
+        console.log('Request payload:', JSON.stringify(request, null, 2));
+        console.log('API URL:', `${API_BASE_URL}/addresses/${addressId}`);
+
+        try {
+            const response = await ApiService.put(`${API_BASE_URL}/addresses/${addressId}`, request);
+            console.log('Update response:', response);
+            return response;
+        } catch (error) {
+            console.error('Error updating address:', error);
+            throw error;
+        }
     }
 
     static async deleteAddress(addressId: number): Promise<{ success: boolean; message: string }> {
-        const response = await ApiService.delete(`${API_BASE_URL}/addresses/${addressId}`);
-        return response;
+        console.log('=== ADDRESS DELETE DEBUG ===');
+        console.log('Deleting address ID:', addressId);
+        console.log('API URL:', `${API_BASE_URL}/addresses/${addressId}`);
+
+        try {
+            const response = await ApiService.delete(`${API_BASE_URL}/addresses/${addressId}`);
+            console.log('Delete response:', response);
+            return response;
+        } catch (error) {
+            console.error('Error deleting address:', error);
+            throw error;
+        }
     }
 
     static async setDefaultAddress(addressId: number): Promise<{ success: boolean; message: string; data: Address }> {
