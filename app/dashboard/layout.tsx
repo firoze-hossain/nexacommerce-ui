@@ -1,7 +1,7 @@
 // app/dashboard/layout.tsx - UPDATED
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/hooks/useAuth';
 import DashboardSidebar from '@/app/components/dashboard/sidebar';
@@ -14,17 +14,25 @@ export default function DashboardLayout({
 }) {
     const { isAuthenticated, user, loading } = useAuth();
     const router = useRouter();
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     useEffect(() => {
         if (!loading) {
-            // Redirect if not authenticated OR if user is a customer
-            if (!isAuthenticated || user?.role?.name === 'CUSTOMER') {
+            setIsCheckingAuth(false);
+
+            // Only redirect if we're sure about the auth state
+            if (!isAuthenticated) {
+                console.log('🚫 Not authenticated, redirecting to login');
+                router.replace('/login');
+            } else if (user?.role?.name === 'CUSTOMER') {
+                console.log('👤 Customer role, redirecting to home');
                 router.replace('/');
             }
         }
     }, [loading, isAuthenticated, user, router]);
 
-    if (loading) {
+    // Show loading spinner while checking auth
+    if (isCheckingAuth || loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
@@ -32,7 +40,7 @@ export default function DashboardLayout({
         );
     }
 
-    // Don't render dashboard for customers
+    // Don't render dashboard for unauthenticated users or customers
     if (!isAuthenticated || user?.role?.name === 'CUSTOMER') {
         return null;
     }
