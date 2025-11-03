@@ -2,6 +2,7 @@
 import { ApiService } from './api-service';
 import { Order, GuestOrderCreateRequest, OrderCreateRequest } from '@/app/lib/types/order';
 import {AuthService} from "@/app/lib/api/auth-service";
+import {ManualOrderRequest, OrderSearchCriteria} from "@/app/lib/types/admin-order";
 
 const API_BASE_URL = 'http://localhost:8090/api/v1/nexa';
 
@@ -22,7 +23,148 @@ export class OrderService {
     //     );
     //     return response;
     // }
+    static async getAdminOrders(
+        criteria: OrderSearchCriteria = {},
+        page: number = 0,
+        size: number = 10,
+        sortBy: string = 'createdAt',
+        sortDirection: string = 'desc'
+    ) {
+        try {
+            // Use admin endpoint for admin users, regular endpoint for others
+            const isAdmin = await this.checkAdminAccess();
+            const endpoint = isAdmin ? `${API_BASE_URL}/admin/orders` : `${API_BASE_URL}/orders/my-orders`;
 
+            const params = new URLSearchParams({
+                page: page.toString(),
+                size: size.toString(),
+                sortBy,
+                sortDirection
+            });
+
+            // Add search criteria for admin
+            if (isAdmin) {
+                if (criteria.customerId) params.append('customerId', criteria.customerId.toString());
+                if (criteria.status) params.append('status', criteria.status);
+                if (criteria.paymentStatus) params.append('paymentStatus', criteria.paymentStatus);
+                if (criteria.orderNumber) params.append('orderNumber', criteria.orderNumber);
+            }
+
+            const response = await ApiService.get(`${endpoint}?${params}`);
+            return response;
+        } catch (error) {
+            return this.handleApiError(error);
+        }
+    }
+    static async getAdminOrderStats() {
+        try {
+            const response = await ApiService.get(`${API_BASE_URL}/admin/orders/stats`);
+            return response;
+        } catch (error) {
+            return this.handleApiError(error);
+        }
+    }
+    static async updateOrderStatusAdmin(orderId: number, status: string, notes?: string) {
+        try {
+            const params = new URLSearchParams({ status });
+            if (notes) params.append('notes', notes);
+
+            const response = await ApiService.patch(
+                `${API_BASE_URL}/admin/orders/${orderId}/status?${params}`
+            );
+            return response;
+        } catch (error) {
+            return this.handleApiError(error);
+        }
+    }
+
+    static async updatePaymentStatus(orderId: number, paymentStatus: string, notes?: string) {
+        try {
+            const params = new URLSearchParams({ paymentStatus });
+            if (notes) params.append('notes', notes);
+
+            const response = await ApiService.patch(
+                `${API_BASE_URL}/admin/orders/${orderId}/payment-status?${params}`
+            );
+            return response;
+        } catch (error) {
+            return this.handleApiError(error);
+        }
+    }
+
+    static async processRefund(orderId: number, amount: number, reason: string) {
+        try {
+            const response = await ApiService.post(
+                `${API_BASE_URL}/admin/orders/${orderId}/refund`,
+                { amount, reason }
+            );
+            return response;
+        } catch (error) {
+            return this.handleApiError(error);
+        }
+    }
+    static async getOrderWithHistory(orderId: number): Promise<{
+        success: boolean;
+        message: string;
+        data: Order | null
+    }> {
+        try {
+            const response = await ApiService.get(`${API_BASE_URL}/admin/orders/${orderId}`);
+            return response;
+        } catch (error) {
+            return this.handleApiError(error);
+        }
+    }
+
+    static async addOrderNote(orderId: number, note: string): Promise<{
+        success: boolean;
+        message: string;
+        data: Order | null
+    }> {
+        try {
+            const response = await ApiService.post(
+                `${API_BASE_URL}/admin/orders/${orderId}/notes?note=${encodeURIComponent(note)}`
+            );
+            return response;
+        } catch (error) {
+            return this.handleApiError(error);
+        }
+    }
+
+    static async reassignOrder(orderId: number, newVendorId: number): Promise<{
+        success: boolean;
+        message: string;
+        data: Order | null
+    }> {
+        try {
+            const response = await ApiService.put(
+                `${API_BASE_URL}/admin/orders/${orderId}/reassign?newVendorId=${newVendorId}`
+            );
+            return response;
+        } catch (error) {
+            return this.handleApiError(error);
+        }
+    }
+    static async createManualOrder(request: ManualOrderRequest): Promise<{
+        success: boolean;
+        message: string;
+        data: Order | null
+    }> {
+        try {
+            const response = await ApiService.post(`${API_BASE_URL}/admin/orders/manual`, request);
+            return response;
+        } catch (error) {
+            return this.handleApiError(error);
+        }
+    }
+    private static async checkAdminAccess(): Promise<boolean> {
+        // Check if user has admin privileges
+        const userStr = localStorage.getItem('user');
+        if (!userStr) return false;
+
+        const user = JSON.parse(userStr);
+        return user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
+    }
     static async getMyOrders(
         page: number = 0,
         size: number = 10,

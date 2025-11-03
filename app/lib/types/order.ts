@@ -28,7 +28,25 @@ export interface Order {
     createdAt: string;
     updatedAt: string;
 }
+export interface OrderHistoryResponse {
+    id: number;
+    description: string;
+    action: string;
+    oldValue?: string;
+    newValue?: string;
+    notes?: string;
+    performedByName: string;
+    createdAt: string;
+}
 
+export interface AddressResponse {
+    fullName: string;
+    phone: string;
+    area: string;
+    addressLine: string;
+    city: string;
+    landmark?: string;
+}
 export interface OrderItem {
     id: number;
     productId: number;
