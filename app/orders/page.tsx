@@ -1,4 +1,4 @@
-// app/orders/page.tsx
+// app/orders/page.tsx - UPDATE the cancel order handler
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,6 +16,7 @@ export default function OrdersPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [cartItemCount, setCartItemCount] = useState(0);
+    const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -40,6 +41,31 @@ export default function OrdersPage() {
             setError('Failed to load orders. Please try again.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCancelOrder = async (orderId: number, orderNumber: string) => {
+        if (!confirm(`Are you sure you want to cancel order #${orderNumber}?`)) {
+            return;
+        }
+
+        try {
+            setCancellingOrderId(orderId);
+            setError(null);
+
+            const response = await OrderService.cancelOrder(orderId);
+
+            if (response.success) {
+                // Refresh the orders list to show updated status
+                await loadOrders();
+            } else {
+                setError(response.message || 'Failed to cancel order');
+            }
+        } catch (error) {
+            console.error('Error cancelling order:', error);
+            setError('Failed to cancel order. Please try again.');
+        } finally {
+            setCancellingOrderId(null);
         }
     };
 
@@ -73,6 +99,11 @@ export default function OrdersPage() {
             default:
                 return 'bg-gray-100 text-gray-800';
         }
+    };
+
+    // Helper function to check if order can be cancelled
+    const canCancelOrder = (order: OrderResponse) => {
+        return (order.status === 'PENDING' || order.status === 'CONFIRMED') && order.paymentStatus !== 'PAID';
     };
 
     // Helper function to safely get order items count
@@ -116,11 +147,21 @@ export default function OrdersPage() {
 
                 {error && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                        <div className="flex items-center">
-                            <svg className="h-5 w-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-red-800">{error}</span>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <svg className="h-5 w-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-red-800">{error}</span>
+                            </div>
+                            <button
+                                onClick={() => setError(null)}
+                                className="text-red-600 hover:text-red-800"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 )}
@@ -147,6 +188,7 @@ export default function OrdersPage() {
                         {orders.map((order) => {
                             const orderItems = getOrderItems(order);
                             const itemsCount = getOrderItemsCount(order);
+                            const canCancel = canCancelOrder(order);
 
                             return (
                                 <div
@@ -246,9 +288,13 @@ export default function OrdersPage() {
                                                 >
                                                     View Details
                                                 </Link>
-                                                {order.status === 'PENDING' && (
-                                                    <button className="border border-red-300 text-red-600 px-6 py-2 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
-                                                        Cancel Order
+                                                {canCancel && (
+                                                    <button
+                                                        onClick={() => handleCancelOrder(order.id, order.orderNumber)}
+                                                        disabled={cancellingOrderId === order.id}
+                                                        className="border border-red-300 text-red-600 px-6 py-2 rounded-lg hover:bg-red-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 transition-colors text-sm font-medium"
+                                                    >
+                                                        {cancellingOrderId === order.id ? 'Cancelling...' : 'Cancel Order'}
                                                     </button>
                                                 )}
                                                 {order.status === 'DELIVERED' && (
