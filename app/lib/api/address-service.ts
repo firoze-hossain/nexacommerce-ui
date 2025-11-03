@@ -55,7 +55,11 @@ export class AddressService {
     //     const response = await ApiService.delete(`${API_BASE_URL}/addresses/${addressId}`);
     //     return response;
     // }
-    static async updateAddress(addressId: number, request: AddressRequest): Promise<{ success: boolean; message: string; data: Address }> {
+    static async updateAddress(addressId: number, request: AddressRequest): Promise<{
+        success: boolean;
+        message: string;
+        data: Address
+    }> {
         console.log('=== ADDRESS UPDATE DEBUG ===');
         console.log('Update request for address ID:', addressId);
         console.log('Request payload:', JSON.stringify(request, null, 2));
@@ -67,6 +71,47 @@ export class AddressService {
             return response;
         } catch (error) {
             console.error('Error updating address:', error);
+            throw error;
+        }
+    }
+
+    static async createAddressForCustomer(
+        customerId: number,
+        addressData: AddressRequest
+    ): Promise<{ success: boolean; message: string; data: Address }> {
+        console.log('=== ADMIN ADDRESS CREATION DEBUG ===');
+        console.log('Customer ID:', customerId);
+        console.log('Request payload:', JSON.stringify(addressData, null, 2));
+        console.log('API URL:', `${API_BASE_URL}/addresses/admin/customers/${customerId}`);
+
+        try {
+            const response = await ApiService.post(
+                `${API_BASE_URL}/addresses/admin/customers/${customerId}`,
+                addressData
+            );
+            console.log('Admin address creation response:', response);
+            return response;
+        } catch (error) {
+            console.error('Error creating address for customer:', error);
+            throw error;
+        }
+    }
+
+    static async getCustomerAddresses(
+        customerId: number
+    ): Promise<{ success: boolean; message: string; data: Address[] }> {
+        console.log('=== GET CUSTOMER ADDRESSES DEBUG ===');
+        console.log('Customer ID:', customerId);
+        console.log('API URL:', `${API_BASE_URL}/addresses/admin/customers/${customerId}`);
+
+        try {
+            const response = await ApiService.get(
+                `${API_BASE_URL}/addresses/admin/customers/${customerId}`
+            );
+            console.log('Customer addresses response:', response);
+            return response;
+        } catch (error) {
+            console.error('Error fetching customer addresses:', error);
             throw error;
         }
     }

@@ -845,7 +845,7 @@ export default function CreateManualOrderModal({ onClose, onOrderCreated }: Crea
 
     const loadCustomerAddresses = async (customerId: number) => {
         try {
-            const addressResponse = await AddressService.getMyAddresses();
+            const addressResponse = await AddressService.getCustomerAddresses(customerId);
             if (addressResponse.success) {
                 setCustomerAddresses(addressResponse.data || []);
 
@@ -876,7 +876,7 @@ export default function CreateManualOrderModal({ onClose, onOrderCreated }: Crea
             if (editingAddress) {
                 response = await AddressService.updateAddress(editingAddress.id, addressData);
             } else {
-                response = await AddressService.createAddress(addressData);
+                response = await AddressService.createAddressForCustomer(selectedCustomer.id,addressData);
             }
 
             if (response.success) {
