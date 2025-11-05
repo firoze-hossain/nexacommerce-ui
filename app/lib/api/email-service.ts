@@ -22,14 +22,45 @@ const API_BASE_URL = 'http://localhost:8090/api/v1/nexa';
 
 export class EmailService {
     // Email Configurations
+    // static async getConfigurations(
+    //     page: number = 0,
+    //     size: number = 20
+    // ): Promise<EmailConfigurationsResponse> {
+    //     const response = await ApiService.get(
+    //         `${API_BASE_URL}/emails/configurations?page=${page}&size=${size}`
+    //     );
+    //     return response;
+    // }
     static async getConfigurations(
         page: number = 0,
         size: number = 20
     ): Promise<EmailConfigurationsResponse> {
-        const response = await ApiService.get(
-            `${API_BASE_URL}/emails/configurations?page=${page}&size=${size}`
-        );
-        return response;
+        try {
+            const response = await ApiService.get(
+                `${API_BASE_URL}/emails/configurations?page=${page}&size=${size}`
+            );
+
+            // Check if response.data is already an array (direct response)
+            if (Array.isArray(response.data)) {
+                // Transform array response to paginated structure
+                return {
+                    ...response,
+                    data: {
+                        items: response.data,
+                        totalItems: response.data.length,
+                        currentPage: page,
+                        pageSize: size,
+                        totalPages: Math.ceil(response.data.length / size)
+                    }
+                };
+            }
+
+            // If it's already paginated or has the expected structure, return as is
+            return response;
+        } catch (error) {
+            console.error('Error in getConfigurations:', error);
+            throw error;
+        }
     }
 
     static async getConfigurationById(id: number): Promise<EmailConfigurationResponse> {
