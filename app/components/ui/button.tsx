@@ -1,14 +1,21 @@
 // app/components/ui/button.tsx
-import {ButtonHTMLAttributes, forwardRef} from 'react';
-import {cn} from '@/app/lib/utils';
+import { ButtonHTMLAttributes, forwardRef } from 'react';
+import { cn } from '@/app/lib/utils';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary' | 'outline' | 'destructive';
     size?: 'sm' | 'md' | 'lg';
+    asChild?: boolean;
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-    ({className, variant = 'primary', size = 'md', ...props}, ref) => {
+    ({ className, variant = 'primary', size = 'md', asChild = false, ...props }, ref) => {
+        // If asChild is true, we need to render the children directly
+        // This allows Next.js Link to be used as a child
+        if (asChild) {
+            return <>{props.children}</>;
+        }
+
         return (
             <button
                 className={cn(
@@ -32,4 +39,4 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = 'Button';
-export {Button};
+export { Button };
