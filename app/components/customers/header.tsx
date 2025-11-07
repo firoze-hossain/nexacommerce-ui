@@ -1,10 +1,13 @@
-// app/components/customers/header.tsx - UPDATED WITH WISHLIST
+// app/components/customers/header.tsx - UPDATED WITH REAL SEARCH API
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/hooks/useAuth';
 import { useWishlist } from '@/app/contexts/wishlist-context';
+import { SearchService, AutocompleteResult, ProductSearchResult, CategorySearchResult, BrandSearchResult } from '@/app/lib/api/search-service';
+import { debounce } from '@/app/lib/utils/debounce';
 
 interface HeaderProps {
     cartItemCount: number;
@@ -14,8 +17,17 @@ interface HeaderProps {
 export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteResult | null>(null);
+    const [showAutocomplete, setShowAutocomplete] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
+    const [popularSearches, setPopularSearches] = useState<string[]>([]);
+
     const { isAuthenticated, user, logout } = useAuth();
     const { wishlistCount } = useWishlist();
+    const router = useRouter();
+    const searchRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     // Check if user is an admin (any role except CUSTOMER)
     const isAdminUser = user?.role?.name !== 'CUSTOMER';
@@ -37,6 +49,277 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
     const getUserMenuItems = () => {
         if (!isAuthenticated) return [];
         return isAdminUser ? adminMenuItems : customerMenuItems;
+    };
+
+    // Load popular searches on component mount
+    useEffect(() => {
+        loadPopularSearches();
+    }, []);
+
+    // Close autocomplete when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setShowAutocomplete(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    // Load popular searches
+    const loadPopularSearches = async () => {
+        try {
+            const response = await SearchService.getPopularSearches(5);
+            if (response.success && response.data) {
+                setPopularSearches(response.data);
+            }
+        } catch (error) {
+            console.error('Failed to load popular searches:', error);
+        }
+    };
+
+    // Debounced search function
+    const performSearch = useCallback(
+        debounce(async (query: string) => {
+            if (!query.trim() || query.length < 2) {
+                setAutocompleteResults(null);
+                setIsSearching(false);
+                return;
+            }
+
+            try {
+                setIsSearching(true);
+                const response = await SearchService.autocomplete(query, 5);
+
+                if (response.success && response.data) {
+                    setAutocompleteResults(response.data);
+                } else {
+                    setAutocompleteResults(null);
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                setAutocompleteResults(null);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300),
+        []
+    );
+
+    // Handle search input change
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+
+        if (query.length >= 2) {
+            setShowAutocomplete(true);
+            performSearch(query);
+        } else {
+            setShowAutocomplete(false);
+            setAutocompleteResults(null);
+        }
+    };
+
+    // Handle search form submission
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (searchQuery.trim()) {
+            setShowAutocomplete(false);
+            // Navigate to search results page
+            router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        }
+    };
+
+    // Handle direct click on autocomplete item
+    const handleAutocompleteItemClick = (item: ProductSearchResult | CategorySearchResult | BrandSearchResult) => {
+        setShowAutocomplete(false);
+        setSearchQuery('');
+
+        switch (item.type) {
+            case 'PRODUCT':
+                router.push(`/products/${item.id}`);
+                break;
+            case 'CATEGORY':
+                router.push(`/categories/${item.id}`);
+                break;
+            case 'BRAND':
+                router.push(`/brands/${item.id}`);
+                break;
+        }
+    };
+
+    // Handle popular search click
+    const handlePopularSearchClick = (searchTerm: string) => {
+        setSearchQuery(searchTerm);
+        setShowAutocomplete(false);
+        router.push(`/search?q=${encodeURIComponent(searchTerm)}`);
+    };
+
+    // Clear search
+    const handleClearSearch = () => {
+        setSearchQuery('');
+        setAutocompleteResults(null);
+        setShowAutocomplete(false);
+        inputRef.current?.focus();
+    };
+
+    // Render autocomplete results
+    const renderAutocompleteResults = () => {
+        if (!autocompleteResults || !showAutocomplete) return null;
+
+        const hasResults =
+            autocompleteResults.products.length > 0 ||
+            autocompleteResults.categories.length > 0 ||
+            autocompleteResults.brands.length > 0;
+
+        return (
+            <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-96 overflow-y-auto z-50">
+                {isSearching ? (
+                    <div className="p-4 text-center text-gray-500">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div>
+                        <p className="mt-2 text-sm">Searching...</p>
+                    </div>
+                ) : hasResults ? (
+                    <div className="p-2">
+                        {/* Products Section */}
+                        {autocompleteResults.products.length > 0 && (
+                            <div className="mb-4">
+                                <h3 className="text-sm font-semibold text-gray-900 px-2 py-1">Products</h3>
+                                {autocompleteResults.products.map((product) => (
+                                    <button
+                                        key={`product-${product.id}`}
+                                        onClick={() => handleAutocompleteItemClick(product)}
+                                        className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center space-x-3"
+                                    >
+                                        {product.imageUrl && (
+                                            <img
+                                                src={product.imageUrl}
+                                                alt={product.name}
+                                                className="w-8 h-8 object-cover rounded"
+                                            />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 truncate">
+                                                {product.name}
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                ${product.price}
+                                                {product.compareAtPrice && product.compareAtPrice > product.price && (
+                                                    <span className="line-through text-gray-400 ml-2">
+                                                        ${product.compareAtPrice}
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Categories Section */}
+                        {autocompleteResults.categories.length > 0 && (
+                            <div className="mb-4">
+                                <h3 className="text-sm font-semibold text-gray-900 px-2 py-1">Categories</h3>
+                                {autocompleteResults.categories.map((category) => (
+                                    <button
+                                        key={`category-${category.id}`}
+                                        onClick={() => handleAutocompleteItemClick(category)}
+                                        className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center space-x-3"
+                                    >
+                                        {category.imageUrl && (
+                                            <img
+                                                src={category.imageUrl}
+                                                alt={category.name}
+                                                className="w-8 h-8 object-cover rounded"
+                                            />
+                                        )}
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">
+                                                {category.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {category.productCount} products
+                                            </p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Brands Section */}
+                        {autocompleteResults.brands.length > 0 && (
+                            <div className="mb-4">
+                                <h3 className="text-sm font-semibold text-gray-900 px-2 py-1">Brands</h3>
+                                {autocompleteResults.brands.map((brand) => (
+                                    <button
+                                        key={`brand-${brand.id}`}
+                                        onClick={() => handleAutocompleteItemClick(brand)}
+                                        className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center space-x-3"
+                                    >
+                                        {brand.logoUrl && (
+                                            <img
+                                                src={brand.logoUrl}
+                                                alt={brand.name}
+                                                className="w-8 h-8 object-cover rounded"
+                                            />
+                                        )}
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">
+                                                {brand.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {brand.productCount} products
+                                            </p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : searchQuery.length >= 2 ? (
+                    <div className="p-4 text-center text-gray-500">
+                        <p>No results found for "{searchQuery}"</p>
+                    </div>
+                ) : null}
+
+                {/* Popular Searches */}
+                {(!hasResults || searchQuery.length === 0) && popularSearches.length > 0 && (
+                    <div className="border-t border-gray-200 p-4">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-2">Popular Searches</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {popularSearches.map((search, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => handlePopularSearchClick(search)}
+                                    className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-700 transition-colors"
+                                >
+                                    {search}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* View All Results */}
+                {hasResults && searchQuery.trim() && (
+                    <div className="border-t border-gray-200 p-2">
+                        <button
+                            // onClick={() => handleSearchSubmit(new Event('submit') as any)}
+                            // className="w-full text-center py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md"
+                            onClick={() => router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)}
+                            className="w-full text-center py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md"
+                        >
+                            View all results for "{searchQuery}"
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -67,23 +350,50 @@ export default function Header({ cartItemCount, onCartClick }: HeaderProps) {
                         <span className="text-2xl font-bold text-gray-900">NexaCommerce</span>
                     </Link>
 
-                    {/* Search Bar */}
-                    <div className="flex-1 max-w-2xl mx-8">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Search for products, brands and categories..."
-                                className="w-full px-4 py-3 pl-12 pr-4 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                            <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
+                    {/* Search Bar - UPDATED WITH REAL SEARCH */}
+                    <div className="flex-1 max-w-2xl mx-8" ref={searchRef}>
+                        <form onSubmit={handleSearchSubmit} className="relative">
+                            <div className="relative">
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    placeholder="Search for products, brands and categories..."
+                                    value={searchQuery}
+                                    onChange={handleSearchChange}
+                                    onFocus={() => searchQuery.length >= 2 && setShowAutocomplete(true)}
+                                    className="w-full px-4 py-3 pl-12 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                                <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+
+                                {/* Clear button */}
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={handleClearSearch}
+                                        className="absolute right-16 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-indigo-600 text-white px-6 py-2 rounded-full hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={!searchQuery.trim()}
+                                >
+                                    Search
+                                </button>
                             </div>
-                            <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-indigo-600 text-white px-6 py-2 rounded-full hover:bg-indigo-700 transition-colors">
-                                Search
-                            </button>
-                        </div>
+
+                            {/* Autocomplete Dropdown */}
+                            {renderAutocompleteResults()}
+                        </form>
                     </div>
 
                     {/* User Actions */}
