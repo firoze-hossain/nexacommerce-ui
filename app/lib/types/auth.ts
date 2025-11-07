@@ -76,3 +76,21 @@ export interface Vendor {
   createdAt: string;
   updatedAt: string;
 }
+
+// Helper functions for user roles
+export const isCustomer = (user: User | null): boolean => {
+    return user?.role?.name === 'CUSTOMER';
+};
+
+export const isVendor = (user: User | null): boolean => {
+    return user?.role?.name === 'VENDOR';
+};
+
+export const isAdmin = (user: User | null): boolean => {
+    return user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
+};
+
+export const hasPermission = (user: User | null, permission: string): boolean => {
+    if (!user?.role?.permissions) return false;
+    return user.role.permissions.some(perm => perm.name === permission);
+};

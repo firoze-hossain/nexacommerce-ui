@@ -14,6 +14,7 @@ import CartSidebar from '@/app/components/customers/cart-sidebar';
 import WishlistButton from '@/app/components/customers/wishlist-button';
 import { formatCurrency } from '@/app/lib/utils/formatters';
 import Link from 'next/link';
+import ReviewSection from "@/app/components/customers/review-section";
 
 export default function ProductDetailPage() {
     const params = useParams();
@@ -491,7 +492,11 @@ export default function ProductDetailPage() {
                     )}
                 </div>
             </main>
-
+            {/* Reviews Section */}
+            <ReviewSection
+                productId={parseInt(productId)}
+                productName={product.name}
+            />
             <Footer />
 
             <CartSidebar
