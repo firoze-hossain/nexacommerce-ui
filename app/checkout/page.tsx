@@ -1,4 +1,4 @@
-// app/checkout/page.tsx - PROFESSIONAL LOCATION-BASED SHIPPING
+// app/checkout/page.tsx - PROFESSIONAL LOCATION-BASED SHIPPING WITH RECEIPT PREVIEW & DOWNLOAD
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,6 +12,442 @@ import { CartResponse, CartItemResponse } from '@/app/lib/types/cart';
 import { Address, GuestAddressRequest, LocationDataResponse, ShippingRate } from '@/app/lib/types/address';
 import { formatCurrency } from '@/app/lib/utils/formatters';
 import { useRouter } from 'next/navigation';
+
+// Receipt Preview Component
+function ReceiptPreview({
+                            orderNumber,
+                            customerName,
+                            customerPhone,
+                            customerEmail,
+                            shippingAddress,
+                            billingAddress,
+                            items,
+                            subtotal,
+                            shippingAmount,
+                            total,
+                            orderDate,
+                            onDownload,
+                            onClose,
+                            downloading = false,
+                            downloadError = null
+                        }: {
+    orderNumber: string;
+    customerName: string;
+    customerPhone: string;
+    customerEmail: string;
+    shippingAddress: any;
+    billingAddress: any;
+    items: CartItemResponse[];
+    subtotal: number;
+    shippingAmount: number;
+    total: number;
+    orderDate: string;
+    onDownload: () => void;
+    onClose: () => void;
+    downloading?: boolean;
+    downloadError?: string | null;
+}) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h2 className="text-2xl font-bold">Order Receipt</h2>
+                            <p className="text-indigo-100 mt-1">Thank you for your purchase!</p>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="text-white hover:text-indigo-200 transition-colors p-1 rounded-full hover:bg-white hover:bg-opacity-10"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Receipt Content */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                        {/* Receipt Header */}
+                        <div className="border-b border-gray-200 p-6">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-900">INVOICE</h1>
+                                    <p className="text-gray-600 mt-1">Order #{orderNumber}</p>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-lg font-semibold text-gray-900">ABC Store</div>
+                                    <p className="text-gray-600 text-sm">123 Business Street</p>
+                                    <p className="text-gray-600 text-sm">Dhaka 1212, Bangladesh</p>
+                                    <p className="text-gray-600 text-sm">contact@abcstore.com</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Order & Customer Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border-b border-gray-200">
+                            <div>
+                                <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
+                                <div className="space-y-2 text-sm">
+                                    <div>
+                                        <span className="font-medium text-gray-700">Name:</span>
+                                        <span className="ml-2 text-gray-900">{customerName}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium text-gray-700">Email:</span>
+                                        <span className="ml-2 text-gray-900">{customerEmail}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium text-gray-700">Phone:</span>
+                                        <span className="ml-2 text-gray-900">{customerPhone}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium text-gray-700">Order Date:</span>
+                                        <span className="ml-2 text-gray-900">{new Date(orderDate).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="font-semibold text-gray-900 mb-3">Shipping Address</h3>
+                                <div className="text-sm text-gray-900 space-y-1">
+                                    <div className="font-medium">{shippingAddress.fullName}</div>
+                                    <div>{shippingAddress.addressLine}</div>
+                                    <div>{shippingAddress.area}, {shippingAddress.city}</div>
+                                    {shippingAddress.landmark && (
+                                        <div>Landmark: {shippingAddress.landmark}</div>
+                                    )}
+                                    <div>Phone: {shippingAddress.phone}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Order Items */}
+                        <div className="p-6 border-b border-gray-200">
+                            <h3 className="font-semibold text-gray-900 mb-4">Order Items</h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                    <tr className="border-b border-gray-200">
+                                        <th className="text-left pb-3 font-semibold text-gray-700">Item</th>
+                                        <th className="text-center pb-3 font-semibold text-gray-700">Quantity</th>
+                                        <th className="text-right pb-3 font-semibold text-gray-700">Price</th>
+                                        <th className="text-right pb-3 font-semibold text-gray-700">Total</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {items.map((item, index) => (
+                                        <tr key={item.id} className={index < items.length - 1 ? 'border-b border-gray-100' : ''}>
+                                            <td className="py-4">
+                                                <div className="flex items-center space-x-3">
+                                                    <img
+                                                        src={item.productImage || '/api/placeholder/40/40'}
+                                                        alt={item.productName}
+                                                        className="w-10 h-10 object-cover rounded"
+                                                    />
+                                                    <div>
+                                                        <div className="font-medium text-gray-900">{item.productName}</div>
+                                                        <div className="text-gray-600 text-xs">SKU: {item.productId}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="text-center py-4 text-gray-700">{item.quantity}</td>
+                                            <td className="text-right py-4 text-gray-700">{formatCurrency(item.unitPrice)}</td>
+                                            <td className="text-right py-4 font-medium text-gray-900">{formatCurrency(item.subtotal)}</td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Order Summary */}
+                        <div className="p-6">
+                            <div className="flex justify-end">
+                                <div className="w-64 space-y-3">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Subtotal:</span>
+                                        <span className="text-gray-900">{formatCurrency(subtotal)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Shipping:</span>
+                                        <span className="text-gray-900">
+                                            {shippingAmount === 0 ? 'FREE' : formatCurrency(shippingAmount)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-lg font-semibold border-t border-gray-200 pt-3">
+                                        <span className="text-gray-900">Total:</span>
+                                        <span className="text-gray-900">{formatCurrency(total)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Payment Method */}
+                            <div className="mt-6 pt-6 border-t border-gray-200">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <h4 className="font-semibold text-gray-900">Payment Method</h4>
+                                        <p className="text-gray-600 text-sm">Cash on Delivery</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <h4 className="font-semibold text-gray-900">Status</h4>
+                                        <p className="text-green-600 text-sm font-medium">Confirmed</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Thank You Message */}
+                            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <div className="flex items-center">
+                                    <svg className="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-green-800 font-medium">Order Confirmed</span>
+                                </div>
+                                <p className="text-green-700 text-sm mt-1">
+                                    Thank you for your order! We've sent a confirmation email to {customerEmail}.
+                                    Your order will be shipped within 1-2 business days.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="border-t border-gray-200 p-6 bg-gray-50">
+                    {downloadError && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                            <div className="flex items-center">
+                                <svg className="h-5 w-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-red-800 text-sm">{downloadError}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                        <button
+                            onClick={onClose}
+                            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                        >
+                            Close Preview
+                        </button>
+                        <button
+                            onClick={onDownload}
+                            disabled={downloading}
+                            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors font-medium min-w-[160px]"
+                        >
+                            {downloading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    Downloading...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Download PDF Receipt
+                                </>
+                            )}
+                        </button>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-center gap-6 text-gray-400 text-xs">
+                        <div className="flex items-center gap-1">
+                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                            PDF Format
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Professional
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                            </svg>
+                            Secure
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Receipt Download Component (Updated with Preview)
+function ReceiptDownload({
+                             orderNumber,
+                             customerName,
+                             customerPhone,
+                             customerEmail,
+                             shippingAddress,
+                             billingAddress,
+                             items,
+                             subtotal,
+                             shippingAmount,
+                             total,
+                             className = ''
+                         }: {
+    orderNumber: string;
+    customerName: string;
+    customerPhone: string;
+    customerEmail: string;
+    shippingAddress: any;
+    billingAddress: any;
+    items: CartItemResponse[];
+    subtotal: number;
+    shippingAmount: number;
+    total: number;
+    className?: string;
+}) {
+    const [downloading, setDownloading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+
+    const handleDownload = async () => {
+        try {
+            setDownloading(true);
+            setError(null);
+
+            const pdfBlob = await OrderService.downloadGuestReceipt(orderNumber, customerPhone);
+
+            // Create download link
+            const url = window.URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `order-receipt-${orderNumber}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            console.log('Receipt downloaded successfully');
+            setShowPreview(false); // Close preview after download
+
+        } catch (err) {
+            console.error('Download error:', err);
+            setError('Failed to download receipt. Please try again.');
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    return (
+        <>
+            <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                    <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            Order Receipt
+                        </h3>
+                        <p className="text-gray-600 text-sm mb-4">
+                            Preview and download your professional order confirmation and receipt for your records.
+                        </p>
+
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                                <div className="flex items-center">
+                                    <svg className="h-4 w-4 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-red-800 text-sm">{error}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                            onClick={() => setShowPreview(true)}
+                            className="flex items-center justify-center gap-2 bg-white text-indigo-600 border border-indigo-300 px-6 py-3 rounded-lg hover:bg-indigo-50 transition-colors font-medium"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Preview Receipt
+                        </button>
+                        <button
+                            onClick={handleDownload}
+                            disabled={downloading}
+                            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors font-medium"
+                        >
+                            {downloading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    Downloading...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Download PDF
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Order Information */}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <span className="font-medium text-gray-700">Order Number:</span>
+                            <p className="text-gray-900 font-mono">{orderNumber}</p>
+                        </div>
+                        <div>
+                            <span className="font-medium text-gray-700">Email:</span>
+                            <p className="text-gray-900">{customerEmail}</p>
+                        </div>
+                        <div>
+                            <span className="font-medium text-gray-700">Phone:</span>
+                            <p className="text-gray-900">{customerPhone}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Receipt Preview Modal */}
+            {showPreview && (
+                <ReceiptPreview
+                    orderNumber={orderNumber}
+                    customerName={customerName}
+                    customerPhone={customerPhone}
+                    customerEmail={customerEmail}
+                    shippingAddress={shippingAddress}
+                    billingAddress={billingAddress}
+                    items={items}
+                    subtotal={subtotal}
+                    shippingAmount={shippingAmount}
+                    total={total}
+                    orderDate={new Date().toISOString()}
+                    onDownload={handleDownload}
+                    onClose={() => setShowPreview(false)}
+                    downloading={downloading}
+                    downloadError={error}
+                />
+            )}
+        </>
+    );
+}
+
+// ... (Keep all the existing interfaces and components: NewAddressForm, CheckoutForm interface, etc.)
 
 interface CheckoutForm {
     // Location type
@@ -35,6 +471,8 @@ interface CheckoutForm {
         locationType: 'inside-dhaka' | 'outside-dhaka' | '';
     };
 }
+
+// ... (Keep the existing NewAddressForm component exactly as it was)
 
 // Enhanced NewAddressForm Component with Location Selection
 function NewAddressForm({ onSubmit, onCancel, popularAreas, editingAddress = null }: {
@@ -237,6 +675,7 @@ export default function CheckoutPage() {
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [orderNumber, setOrderNumber] = useState<string | null>(null);
     const [cartItemCount, setCartItemCount] = useState(0);
     const [showAddressForm, setShowAddressForm] = useState(false);
     const [savingAddress, setSavingAddress] = useState(false);
@@ -509,8 +948,18 @@ export default function CheckoutPage() {
 
                 response = await OrderService.createOrder(orderRequest);
 
-                if (response.success) {
+                if (response.success && response.data) {
+                    const newOrderNumber = response.data.orderNumber;
+                    setOrderNumber(newOrderNumber);
                     await CartService.clearCart();
+
+                    const totalAmount = formatCurrency(getTotal());
+                    const email = user?.email || '';
+
+                    setSuccess(`Order #${newOrderNumber} placed successfully! Total: ${totalAmount}. Confirmation sent to ${email}.`);
+
+                } else {
+                    setError(response.message || 'Failed to place order');
                 }
             } else {
                 const guestOrderRequest = {
@@ -545,29 +994,27 @@ export default function CheckoutPage() {
 
                 response = await OrderService.createGuestOrder(guestOrderRequest);
 
-                // Clear guest cart
-                try {
-                    const sessionId = getSessionId();
-                    await CartService.clearGuestCart(sessionId);
-                    localStorage.removeItem('guestSessionId');
-                } catch (cartError) {
-                    console.warn('Cart clearing failed, but order was placed successfully');
+                if (response.success && response.data) {
+                    const newOrderNumber = response.data.orderNumber;
+                    setOrderNumber(newOrderNumber);
+
+                    const totalAmount = formatCurrency(getTotal());
+                    const email = form.guestEmail;
+
+                    setSuccess(`Order #${newOrderNumber} placed successfully! Total: ${totalAmount}. Confirmation sent to ${email}.`);
+
+                    // Clear guest cart
+                    try {
+                        const sessionId = getSessionId();
+                        await CartService.clearGuestCart(sessionId);
+                        localStorage.removeItem('guestSessionId');
+                    } catch (cartError) {
+                        console.warn('Cart clearing failed, but order was placed successfully');
+                    }
+
+                } else {
+                    setError(response.message || 'Failed to place order');
                 }
-            }
-
-            if (response.success) {
-                const orderNumber = response.data.orderNumber;
-                const totalAmount = formatCurrency(getTotal());
-                const email = isAuthenticated ? user?.email : form.guestEmail;
-
-                setSuccess(`Order #${orderNumber} placed successfully! Total: ${totalAmount}. Confirmation sent to ${email}. Redirecting to order details...`);
-
-                setTimeout(() => {
-                    router.push(`/orders/${orderNumber}`);
-                }, 3000);
-
-            } else {
-                setError(response.message || 'Failed to place order');
             }
         } catch (err: any) {
             console.error('Error placing order:', err);
@@ -730,6 +1177,18 @@ export default function CheckoutPage() {
         router.push('/signup?redirect=checkout');
     };
 
+    const handleContinueShopping = () => {
+        router.push('/products');
+    };
+
+    const handleViewOrders = () => {
+        if (isAuthenticated && orderNumber) {
+            router.push(`/orders/${orderNumber}`);
+        } else {
+            router.push('/orders');
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50">
@@ -803,19 +1262,67 @@ export default function CheckoutPage() {
                         )}
                     </div>
 
-                    {/* Success Message */}
-                    {success && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-                            <div className="flex items-start">
-                                <div className="flex-shrink-0">
-                                    <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </div>
-                                <div className="ml-3 flex-1">
-                                    <h3 className="text-green-800 font-semibold text-lg">Success!</h3>
-                                    <div className="mt-2 text-green-700">
-                                        <p className="text-sm">{success}</p>
+                    {/* Success Message with Enhanced Receipt Download */}
+                    {success && orderNumber && (
+                        <div className="space-y-6 mb-6">
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                                <div className="flex items-start">
+                                    <div className="flex-shrink-0">
+                                        <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-3 flex-1">
+                                        <h3 className="text-green-800 font-semibold text-lg">Order Placed Successfully!</h3>
+                                        <div className="mt-2 text-green-700">
+                                            <p className="text-sm">
+                                                {success}
+                                            </p>
+
+                                            {/* Enhanced receipt download for guest users with preview */}
+                                            {!isAuthenticated && cart && (
+                                                <div className="mt-4">
+                                                    <ReceiptDownload
+                                                        orderNumber={orderNumber}
+                                                        customerName={form.guestShippingAddress.fullName}
+                                                        customerPhone={form.guestShippingAddress.phone}
+                                                        customerEmail={form.guestEmail}
+                                                        shippingAddress={form.guestShippingAddress}
+                                                        billingAddress={form.useShippingAsBilling ? form.guestShippingAddress : form.guestBillingAddress}
+                                                        items={cart.items}
+                                                        subtotal={getSubtotal()}
+                                                        shippingAmount={getShippingAmount()}
+                                                        total={getTotal()}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Action buttons for success state */}
+                                            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                                                <button
+                                                    onClick={handleContinueShopping}
+                                                    className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+                                                >
+                                                    Continue Shopping
+                                                </button>
+                                                {isAuthenticated && (
+                                                    <button
+                                                        onClick={handleViewOrders}
+                                                        className="bg-white text-indigo-600 border border-indigo-300 px-6 py-3 rounded-lg hover:bg-indigo-50 transition-colors"
+                                                    >
+                                                        View Your Orders
+                                                    </button>
+                                                )}
+                                                {!isAuthenticated && (
+                                                    <button
+                                                        onClick={handleCreateAccountRedirect}
+                                                        className="bg-white text-indigo-600 border border-indigo-300 px-6 py-3 rounded-lg hover:bg-indigo-50 transition-colors"
+                                                    >
+                                                        Create Account for Order Tracking
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -844,6 +1351,7 @@ export default function CheckoutPage() {
 
                     {!success && (
                         <form onSubmit={handleSubmit}>
+                            {/* ... (Keep the rest of the checkout form exactly as it was) */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 {/* Checkout Form */}
                                 <div className="lg:col-span-2 space-y-6">

@@ -243,5 +243,26 @@ export class OrderService {
             data: null
         };
     }
+    static async downloadGuestReceipt(orderNumber: string, phoneNumber: string): Promise<Blob> {
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/orders/guest/receipt/${orderNumber}?phoneNumber=${encodeURIComponent(phoneNumber)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/pdf',
+                    },
+                }
+            );
 
+            if (!response.ok) {
+                throw new Error('Failed to download receipt');
+            }
+
+            return await response.blob();
+        } catch (error) {
+            console.error('Error downloading receipt:', error);
+            throw error;
+        }
+    }
 }
