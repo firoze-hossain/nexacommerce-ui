@@ -13,19 +13,17 @@ import { Address, GuestAddressRequest, LocationDataResponse, ShippingRate } from
 import { formatCurrency } from '@/app/lib/utils/formatters';
 import { useRouter } from 'next/navigation';
 
-// Receipt Preview Component
+// Receipt Preview Component - Matches Backend PDF Design
 function ReceiptPreview({
                             orderNumber,
                             customerName,
                             customerPhone,
                             customerEmail,
                             shippingAddress,
-                            billingAddress,
                             items,
                             subtotal,
                             shippingAmount,
                             total,
-                            orderDate,
                             onDownload,
                             onClose,
                             downloading = false,
@@ -36,12 +34,10 @@ function ReceiptPreview({
     customerPhone: string;
     customerEmail: string;
     shippingAddress: any;
-    billingAddress: any;
     items: CartItemResponse[];
     subtotal: number;
     shippingAmount: number;
     total: number;
-    orderDate: string;
     onDownload: () => void;
     onClose: () => void;
     downloading?: boolean;
@@ -49,19 +45,19 @@ function ReceiptPreview({
 }) {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+                <div className="bg-gray-900 p-4 text-white">
                     <div className="flex justify-between items-start">
                         <div>
-                            <h2 className="text-2xl font-bold">Order Receipt</h2>
-                            <p className="text-indigo-100 mt-1">Thank you for your purchase!</p>
+                            <h1 className="text-xl font-bold">NEXACOMMERCE</h1>
+                            <p className="text-gray-300 text-sm mt-1">Order: {orderNumber}</p>
                         </div>
                         <button
                             onClick={onClose}
-                            className="text-white hover:text-indigo-200 transition-colors p-1 rounded-full hover:bg-white hover:bg-opacity-10"
+                            className="text-white hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-white hover:bg-opacity-10"
                         >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
@@ -69,153 +65,89 @@ function ReceiptPreview({
                 </div>
 
                 {/* Receipt Content */}
-                <div className="flex-1 overflow-y-auto p-6">
-                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                        {/* Receipt Header */}
-                        <div className="border-b border-gray-200 p-6">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h1 className="text-2xl font-bold text-gray-900">INVOICE</h1>
-                                    <p className="text-gray-600 mt-1">Order #{orderNumber}</p>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-lg font-semibold text-gray-900">ABC Store</div>
-                                    <p className="text-gray-600 text-sm">123 Business Street</p>
-                                    <p className="text-gray-600 text-sm">Dhaka 1212, Bangladesh</p>
-                                    <p className="text-gray-600 text-sm">contact@abcstore.com</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Order & Customer Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border-b border-gray-200">
-                            <div>
-                                <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
-                                <div className="space-y-2 text-sm">
-                                    <div>
-                                        <span className="font-medium text-gray-700">Name:</span>
-                                        <span className="ml-2 text-gray-900">{customerName}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-medium text-gray-700">Email:</span>
-                                        <span className="ml-2 text-gray-900">{customerEmail}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-medium text-gray-700">Phone:</span>
-                                        <span className="ml-2 text-gray-900">{customerPhone}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-medium text-gray-700">Order Date:</span>
-                                        <span className="ml-2 text-gray-900">{new Date(orderDate).toLocaleDateString('en-US', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h3 className="font-semibold text-gray-900 mb-3">Shipping Address</h3>
-                                <div className="text-sm text-gray-900 space-y-1">
-                                    <div className="font-medium">{shippingAddress.fullName}</div>
-                                    <div>{shippingAddress.addressLine}</div>
-                                    <div>{shippingAddress.area}, {shippingAddress.city}</div>
-                                    {shippingAddress.landmark && (
-                                        <div>Landmark: {shippingAddress.landmark}</div>
-                                    )}
-                                    <div>Phone: {shippingAddress.phone}</div>
-                                </div>
+                <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                    <div className="bg-white border border-gray-200 rounded shadow-sm">
+                        {/* Customer Info */}
+                        <div className="p-4 border-b border-gray-200">
+                            <h3 className="font-semibold text-gray-900 mb-2">Customer:</h3>
+                            <div className="text-sm text-gray-700 space-y-1">
+                                <div>{customerName}</div>
+                                <div>Contact: {customerEmail}</div>
+                                <div>Payment: Cash on Delivery</div>
+                                <div>Phone: {customerPhone}</div>
                             </div>
                         </div>
 
                         {/* Order Items */}
-                        <div className="p-6 border-b border-gray-200">
-                            <h3 className="font-semibold text-gray-900 mb-4">Order Items</h3>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                    <tr className="border-b border-gray-200">
-                                        <th className="text-left pb-3 font-semibold text-gray-700">Item</th>
-                                        <th className="text-center pb-3 font-semibold text-gray-700">Quantity</th>
-                                        <th className="text-right pb-3 font-semibold text-gray-700">Price</th>
-                                        <th className="text-right pb-3 font-semibold text-gray-700">Total</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {items.map((item, index) => (
-                                        <tr key={item.id} className={index < items.length - 1 ? 'border-b border-gray-100' : ''}>
-                                            <td className="py-4">
-                                                <div className="flex items-center space-x-3">
-                                                    <img
-                                                        src={item.productImage || '/api/placeholder/40/40'}
-                                                        alt={item.productName}
-                                                        className="w-10 h-10 object-cover rounded"
-                                                    />
-                                                    <div>
-                                                        <div className="font-medium text-gray-900">{item.productName}</div>
-                                                        <div className="text-gray-600 text-xs">SKU: {item.productId}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="text-center py-4 text-gray-700">{item.quantity}</td>
-                                            <td className="text-right py-4 text-gray-700">{formatCurrency(item.unitPrice)}</td>
-                                            <td className="text-right py-4 font-medium text-gray-900">{formatCurrency(item.subtotal)}</td>
-                                        </tr>
-                                    ))}
-                                    </tbody>
-                                </table>
+                        <div className="p-4 border-b border-gray-200">
+                            <h3 className="font-semibold text-gray-900 mb-3">Order Items</h3>
+                            <div className="space-y-3">
+                                {items.map((item) => (
+                                    <div key={item.id} className="flex justify-between items-start text-sm">
+                                        <div className="flex-1">
+                                            <div className="font-medium text-gray-900">{item.productName}</div>
+                                        </div>
+                                        <div className="text-right whitespace-nowrap ml-4">
+                                            <div>Qty: {item.quantity}</div>
+                                            <div>Price: {formatCurrency(item.unitPrice)}</div>
+                                            <div className="font-medium">Total: {formatCurrency(item.subtotal)}</div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
                         {/* Order Summary */}
-                        <div className="p-6">
-                            <div className="flex justify-end">
-                                <div className="w-64 space-y-3">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Subtotal:</span>
-                                        <span className="text-gray-900">{formatCurrency(subtotal)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Shipping:</span>
-                                        <span className="text-gray-900">
-                                            {shippingAmount === 0 ? 'FREE' : formatCurrency(shippingAmount)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between text-lg font-semibold border-t border-gray-200 pt-3">
-                                        <span className="text-gray-900">Total:</span>
-                                        <span className="text-gray-900">{formatCurrency(total)}</span>
-                                    </div>
+                        <div className="p-4 border-b border-gray-200">
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Subtotal:</span>
+                                    <span className="text-gray-900">{formatCurrency(subtotal)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Shipping:</span>
+                                    <span className="text-gray-900">
+                                        {shippingAmount === 0 ? 'FREE' : formatCurrency(shippingAmount)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Tax:</span>
+                                    <span className="text-gray-900">{formatCurrency(0)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Discount:</span>
+                                    <span className="text-gray-900">{formatCurrency(0)}</span>
+                                </div>
+                                <div className="flex justify-between text-lg font-semibold border-t border-gray-200 pt-2">
+                                    <span className="text-gray-900">TOTAL:</span>
+                                    <span className="text-gray-900">{formatCurrency(total)}</span>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Payment Method */}
-                            <div className="mt-6 pt-6 border-t border-gray-200">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <h4 className="font-semibold text-gray-900">Payment Method</h4>
-                                        <p className="text-gray-600 text-sm">Cash on Delivery</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <h4 className="font-semibold text-gray-900">Status</h4>
-                                        <p className="text-green-600 text-sm font-medium">Confirmed</p>
-                                    </div>
-                                </div>
+                        {/* Shipping Address */}
+                        <div className="p-4">
+                            <h3 className="font-semibold text-gray-900 mb-2">Shipping Address</h3>
+                            <div className="text-sm text-gray-700 space-y-1">
+                                <div className="font-medium">{shippingAddress.fullName}</div>
+                                <div>{shippingAddress.addressLine}</div>
+                                <div>{shippingAddress.area}, {shippingAddress.city}</div>
+                                {shippingAddress.landmark && (
+                                    <div>Landmark: {shippingAddress.landmark}</div>
+                                )}
+                                <div>Phone: {shippingAddress.phone}</div>
                             </div>
 
                             {/* Thank You Message */}
-                            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                                 <div className="flex items-center">
-                                    <svg className="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg className="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                     </svg>
-                                    <span className="text-green-800 font-medium">Order Confirmed</span>
+                                    <span className="text-green-800 font-medium text-sm">Order Confirmed</span>
                                 </div>
-                                <p className="text-green-700 text-sm mt-1">
+                                <p className="text-green-700 text-xs mt-1">
                                     Thank you for your order! We've sent a confirmation email to {customerEmail}.
-                                    Your order will be shipped within 1-2 business days.
                                 </p>
                             </div>
                         </div>
@@ -223,11 +155,11 @@ function ReceiptPreview({
                 </div>
 
                 {/* Footer Actions */}
-                <div className="border-t border-gray-200 p-6 bg-gray-50">
+                <div className="border-t border-gray-200 p-4 bg-white">
                     {downloadError && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
                             <div className="flex items-center">
-                                <svg className="h-5 w-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <svg className="h-4 w-4 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                                 </svg>
                                 <span className="text-red-800 text-sm">{downloadError}</span>
@@ -235,17 +167,11 @@ function ReceiptPreview({
                         </div>
                     )}
 
-                    <div className="flex flex-col sm:flex-row gap-3 justify-end">
-                        <button
-                            onClick={onClose}
-                            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                        >
-                            Close Preview
-                        </button>
+                    <div className="flex flex-col gap-2">
                         <button
                             onClick={onDownload}
                             disabled={downloading}
-                            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors font-medium min-w-[160px]"
+                            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors font-medium"
                         >
                             {downloading ? (
                                 <>
@@ -261,27 +187,12 @@ function ReceiptPreview({
                                 </>
                             )}
                         </button>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-center gap-6 text-gray-400 text-xs">
-                        <div className="flex items-center gap-1">
-                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                            PDF Format
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                            Professional
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                            </svg>
-                            Secure
-                        </div>
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                        >
+                            Close Preview
+                        </button>
                     </div>
                 </div>
             </div>
@@ -289,14 +200,13 @@ function ReceiptPreview({
     );
 }
 
-// Receipt Download Component (Updated with Preview)
+// Receipt Download Component
 function ReceiptDownload({
                              orderNumber,
                              customerName,
                              customerPhone,
                              customerEmail,
                              shippingAddress,
-                             billingAddress,
                              items,
                              subtotal,
                              shippingAmount,
@@ -308,7 +218,6 @@ function ReceiptDownload({
     customerPhone: string;
     customerEmail: string;
     shippingAddress: any;
-    billingAddress: any;
     items: CartItemResponse[];
     subtotal: number;
     shippingAmount: number;
@@ -337,7 +246,7 @@ function ReceiptDownload({
             window.URL.revokeObjectURL(url);
 
             console.log('Receipt downloaded successfully');
-            setShowPreview(false); // Close preview after download
+            setShowPreview(false);
 
         } catch (err) {
             console.error('Download error:', err);
@@ -356,7 +265,7 @@ function ReceiptDownload({
                             Order Receipt
                         </h3>
                         <p className="text-gray-600 text-sm mb-4">
-                            Preview and download your professional order confirmation and receipt for your records.
+                            Preview and download your order confirmation receipt.
                         </p>
 
                         {error && (
@@ -374,7 +283,7 @@ function ReceiptDownload({
                     <div className="flex flex-col sm:flex-row gap-3">
                         <button
                             onClick={() => setShowPreview(true)}
-                            className="flex items-center justify-center gap-2 bg-white text-indigo-600 border border-indigo-300 px-6 py-3 rounded-lg hover:bg-indigo-50 transition-colors font-medium"
+                            className="flex items-center justify-center gap-2 bg-white text-indigo-600 border border-indigo-300 px-4 py-3 rounded-lg hover:bg-indigo-50 transition-colors font-medium"
                         >
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -385,7 +294,7 @@ function ReceiptDownload({
                         <button
                             onClick={handleDownload}
                             disabled={downloading}
-                            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors font-medium"
+                            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors font-medium"
                         >
                             {downloading ? (
                                 <>
@@ -431,12 +340,10 @@ function ReceiptDownload({
                     customerPhone={customerPhone}
                     customerEmail={customerEmail}
                     shippingAddress={shippingAddress}
-                    billingAddress={billingAddress}
                     items={items}
                     subtotal={subtotal}
                     shippingAmount={shippingAmount}
                     total={total}
-                    orderDate={new Date().toISOString()}
                     onDownload={handleDownload}
                     onClose={() => setShowPreview(false)}
                     downloading={downloading}
@@ -447,34 +354,7 @@ function ReceiptDownload({
     );
 }
 
-// ... (Keep all the existing interfaces and components: NewAddressForm, CheckoutForm interface, etc.)
-
-interface CheckoutForm {
-    // Location type
-    locationType: 'inside-dhaka' | 'outside-dhaka' | '';
-
-    // For authenticated users
-    shippingAddressId: number;
-    billingAddressId: number;
-    useShippingAsBilling: boolean;
-    paymentMethod: string;
-    customerNotes: string;
-
-    // For guest users
-    guestEmail: string;
-    guestShippingAddress: GuestAddressRequest & {
-        city: string;
-        locationType: 'inside-dhaka' | 'outside-dhaka' | '';
-    };
-    guestBillingAddress: GuestAddressRequest & {
-        city: string;
-        locationType: 'inside-dhaka' | 'outside-dhaka' | '';
-    };
-}
-
-// ... (Keep the existing NewAddressForm component exactly as it was)
-
-// Enhanced NewAddressForm Component with Location Selection
+// NewAddressForm Component
 function NewAddressForm({ onSubmit, onCancel, popularAreas, editingAddress = null }: {
     onSubmit: (data: any) => void;
     onCancel: () => void;
@@ -505,7 +385,7 @@ function NewAddressForm({ onSubmit, onCancel, popularAreas, editingAddress = nul
 
     const handleSubmit = (e: React.MouseEvent) => {
         e.preventDefault();
-        e.stopPropagation(); // Prevent event from bubbling
+        e.stopPropagation();
         onSubmit(formData);
     };
 
@@ -663,6 +543,24 @@ function NewAddressForm({ onSubmit, onCancel, popularAreas, editingAddress = nul
             </div>
         </div>
     );
+}
+
+interface CheckoutForm {
+    locationType: 'inside-dhaka' | 'outside-dhaka' | '';
+    shippingAddressId: number;
+    billingAddressId: number;
+    useShippingAsBilling: boolean;
+    paymentMethod: string;
+    customerNotes: string;
+    guestEmail: string;
+    guestShippingAddress: GuestAddressRequest & {
+        city: string;
+        locationType: 'inside-dhaka' | 'outside-dhaka' | '';
+    };
+    guestBillingAddress: GuestAddressRequest & {
+        city: string;
+        locationType: 'inside-dhaka' | 'outside-dhaka' | '';
+    };
 }
 
 export default function CheckoutPage() {
@@ -1288,7 +1186,6 @@ export default function CheckoutPage() {
                                                         customerPhone={form.guestShippingAddress.phone}
                                                         customerEmail={form.guestEmail}
                                                         shippingAddress={form.guestShippingAddress}
-                                                        billingAddress={form.useShippingAsBilling ? form.guestShippingAddress : form.guestBillingAddress}
                                                         items={cart.items}
                                                         subtotal={getSubtotal()}
                                                         shippingAmount={getShippingAmount()}
@@ -1351,7 +1248,6 @@ export default function CheckoutPage() {
 
                     {!success && (
                         <form onSubmit={handleSubmit}>
-                            {/* ... (Keep the rest of the checkout form exactly as it was) */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 {/* Checkout Form */}
                                 <div className="lg:col-span-2 space-y-6">
