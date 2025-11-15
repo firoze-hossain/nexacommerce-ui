@@ -16,6 +16,7 @@ const superAdminNavigation = [
     {name: 'Products', href: '/dashboard/products', icon: '🛍️'},
     {name: 'Hot Deals', href: '/dashboard/hot-deals', icon: '🔥'},
     {name: 'Orders', href: '/dashboard/orders', icon: '📦'},
+    {name: 'Hero Management', href: '/dashboard/hero', icon: '🎯'}, // ADD THIS LINE
     {name: 'Analytics', href: '/dashboard/analytics', icon: '📈'},
 ];
 
@@ -30,6 +31,7 @@ const adminNavigation = [
     {name: 'Products', href: '/dashboard/products', icon: '🛍️'},
     {name: 'Hot Deals', href: '/dashboard/hot-deals', icon: '🔥'},
     {name: 'Orders', href: '/dashboard/orders', icon: '📦'},
+    {name: 'Hero Management', href: '/dashboard/hero', icon: '🎯'}, // ADD THIS LINE
     {name: 'Analytics', href: '/dashboard/analytics', icon: '📈'},
 ];
 
